@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: bookingtour
+  datasource:
+    url: jdbc:mysql://localhost:3306/booking_tour?useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: Tonguyen24@
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        dialect: org.hibernate.dialect.MySQLDialect
+        generate_statistics: true
+  sql:
+    init:
+      mode: always
+
+app:
+  jwt:
+    secret: "ChangeThisToARandomSecretKey32bytes!!"
+    expiration-ms: 86400000
+  auth-cookie:
+    name: access_token
+    path: /
+    secure: false
+    same-site: Lax
+    max-age-seconds: 86400
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:3000
+      - http://127.0.0.1:5173
+  vnpay:
+    tmn-code: "DEMO_TMNCODE"
+    hash-secret: "DEMO_HASH_SECRET_CHANGE_ME"
+    pay-url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+    return-url: "http://localhost:5173/payment/vnpay-return"
+    ipn-url: "http://localhost:8080/payments/vnpay/ipn"
+    locale: "vn"
+    curr-code: "VND"
+    expire-minutes: 15
