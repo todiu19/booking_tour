@@ -13,15 +13,19 @@ import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
 import com.project.bookingtour.common.dto.response.TourResponse;
 import com.project.bookingtour.common.dto.response.UserResponse;
 import com.project.bookingtour.admin.service.AdminService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/admin")
@@ -76,18 +80,37 @@ public class AdminController {
         return res;
     }
 
-    @PostMapping("/tour")
+    @PostMapping(value = "/tour", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<TourResponse> create(@RequestBody TourCreateRequest request) {
         ApiResponse<TourResponse> res = new ApiResponse<>();
         res.setData(adminService.createTour(request));
         return res;
     }
 
-    @PutMapping("/tour/{id}")
+    @PostMapping(value = "/tour", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<TourResponse> createWithImages(
+            @RequestPart("tour") TourCreateRequest request,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+        ApiResponse<TourResponse> res = new ApiResponse<>();
+        res.setData(adminService.createTour(request, files));
+        return res;
+    }
+
+    @PutMapping(value = "/tour/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<TourResponse> update(
             @PathVariable Long id, @RequestBody TourUpdateRequest request) {
         ApiResponse<TourResponse> res = new ApiResponse<>();
         res.setData(adminService.updateTour(id, request));
+        return res;
+    }
+
+    @PutMapping(value = "/tour/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<TourResponse> updateWithImages(
+            @PathVariable Long id,
+            @RequestPart("tour") TourUpdateRequest request,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+        ApiResponse<TourResponse> res = new ApiResponse<>();
+        res.setData(adminService.updateTour(id, request, files));
         return res;
     }
 

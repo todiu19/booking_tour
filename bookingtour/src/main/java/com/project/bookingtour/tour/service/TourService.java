@@ -11,10 +11,13 @@ import com.project.bookingtour.domain.entity.Destination;
 import com.project.bookingtour.domain.entity.Tour;
 import com.project.bookingtour.domain.entity.TourDestination;
 import com.project.bookingtour.domain.entity.TourDestinationId;
+import com.project.bookingtour.domain.entity.TourImage;
 import com.project.bookingtour.domain.repository.DestinationRepository;
+import com.project.bookingtour.domain.repository.TourImageRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
 import com.project.bookingtour.domain.repository.TourDestinationRepository;
 import com.project.bookingtour.domain.repository.TourSpecifications;
+import com.project.bookingtour.storage.StorageService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +30,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +41,8 @@ public class TourService {
     private final TourRepository tourRepository;
     private final DestinationRepository destinationRepository;
     private final TourDestinationRepository tourDestinationRepository;
+    private final TourImageRepository tourImageRepository;
+    private final StorageService storageService;
 
     public List<TourResponse> getPublishedLatest(int limit) {
         return tourRepository
@@ -168,6 +174,17 @@ public class TourService {
     }
 
     @Transactional
+    public TourResponse createTour(TourCreateRequest req, List<MultipartFile> files) {
+        TourResponse response = createTour(req);
+        Tour tour =
+                tourRepository
+                        .findById(response.getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
+        addTourImages(tour, files);
+        return TourResponse.from(tour);
+    }
+
+    @Transactional
     public TourResponse updateTour(Long id, TourUpdateRequest req) {
         Tour tour =
                 tourRepository
@@ -207,6 +224,17 @@ public class TourService {
             tour.setStatus(req.getStatus());
         }
         return TourResponse.from(tourRepository.save(tour));
+    }
+
+    @Transactional
+    public TourResponse updateTour(Long id, TourUpdateRequest req, List<MultipartFile> files) {
+        TourResponse response = updateTour(id, req);
+        Tour tour =
+                tourRepository
+                        .findById(response.getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
+        addTourImages(tour, files);
+        return TourResponse.from(tour);
     }
 
     /** Gỡ tour khỏi catalog: đặt {@link TourStatus#archived}, không xóa bản ghi (giữ FK/lịch sử). */
@@ -260,5 +288,27 @@ public class TourService {
                         .map(Destination::getName)
                         .collect(Collectors.joining(", "));
         tour.setDestinationList(destinationList);
+    }
+
+    private void addTourImages(Tour tour, List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+        List<TourImage> existing = tourImageRepository.findByTour_IdOrderByDisplayOrderAsc(tour.getId());
+        int nextDisplayOrder =
+                existing.isEmpty()
+                        ? 1
+                        : existing.get(existing.size() - 1).getDisplayOrder() + 1;
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            String imageUrl = storageService.storeTourImage(file);
+            TourImage image = new TourImage();
+            image.setTour(tour);
+            image.setImageUrl(imageUrl);
+            image.setDisplayOrder(nextDisplayOrder++);
+            tourImageRepository.save(image);
+        }
     }
 }

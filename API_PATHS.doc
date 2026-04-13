@@ -53,9 +53,19 @@ Auth note:
 
 - POST /admin/tour   (ADMIN)
   Chức năng: Admin tạo tour.
+  Hỗ trợ 2 kiểu:
+  - application/json (chỉ dữ liệu tour)
+  - multipart/form-data:
+    - part "tour": JSON TourCreateRequest
+    - part "files": danh sách ảnh (jpg/jpeg/png/webp)
 
 - PUT /admin/tour/{id}   (ADMIN)
   Chức năng: Admin cập nhật tour.
+  Hỗ trợ 2 kiểu:
+  - application/json (chỉ dữ liệu tour)
+  - multipart/form-data:
+    - part "tour": JSON TourUpdateRequest
+    - part "files": danh sách ảnh mới cần thêm
 
 - PUT /admin/tour/{id}/archive   (ADMIN)
   Chức năng: Admin archive tour (soft, đổi status -> archived).
@@ -145,7 +155,7 @@ khi ấn vào 1 dest thì gọi 2 api phía dưới luôn. 1 cái để mô tả
 ==================================================
 11) DASHBOARD (ADMIN)
 ==================================================
-- GET /admin/dashboard
+- GET /dashboard
   Chức năng: Dashboard tổng quan cho admin (users, tours, bookings, payments, revenue summary).
 
 ==================================================
@@ -273,7 +283,7 @@ I. Trang Admin Dashboard
   1) KPI cards: users, tours, bookings, payments, revenue.
   2) (Tùy chọn) chart doanh thu theo thời gian.
 - API:
-  - GET /admin/dashboard
+  - GET /dashboard
 
 J. Trang Admin Tour Management
 - Mục tiêu:

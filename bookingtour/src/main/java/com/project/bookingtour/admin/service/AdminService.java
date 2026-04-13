@@ -15,8 +15,10 @@ import com.project.bookingtour.destination.service.DestinationService;
 import com.project.bookingtour.payment.service.PaymentService;
 import com.project.bookingtour.tour.service.TourService;
 import com.project.bookingtour.user.service.UserService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -51,8 +53,16 @@ public class AdminService {
         return tourService.createTour(request);
     }
 
+    public TourResponse createTour(TourCreateRequest request, List<MultipartFile> files) {
+        return tourService.createTour(request, files);
+    }
+
     public TourResponse updateTour(Long id, TourUpdateRequest request) {
         return tourService.updateTour(id, request);
+    }
+
+    public TourResponse updateTour(Long id, TourUpdateRequest request, List<MultipartFile> files) {
+        return tourService.updateTour(id, request, files);
     }
 
     public void deleteTour(Long id) {
