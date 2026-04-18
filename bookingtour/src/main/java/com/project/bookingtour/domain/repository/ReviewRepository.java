@@ -12,6 +12,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     Page<Review> findByTour_Id(Long tourId, Pageable pageable);
 
+    Page<Review> findByTour_IdAndStatus(Long tourId, ReviewStatus status, Pageable pageable);
+
     boolean existsByUser_IdAndTour_Id(Long userId, Long tourId);
 
     long countByStatus(ReviewStatus status);

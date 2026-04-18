@@ -16,7 +16,7 @@ public final class TourSpecifications {
 
     /**
      * Tour {@link TourStatus#published} với bộ lọc tùy chọn. {@code keyword} so khớp (không phân
-     * biệt hoa thường) với tên, mô tả, điểm khởi hành, chuỗi JSON điểm đến.
+     * biệt hoa thường) với tên, mô tả, chuỗi JSON điểm đến.
      */
     public static Specification<Tour> publishedWithFilters(
             String keyword,
@@ -24,7 +24,6 @@ public final class TourSpecifications {
             BigDecimal maxPrice,
             Integer minDurationDays,
             Integer maxDurationDays,
-            String departureContains,
             Long destinationId) {
 
         return (root, query, cb) -> {
@@ -39,10 +38,6 @@ public final class TourSpecifications {
                 ors.add(
                         cb.like(
                                 cb.lower(cb.coalesce(root.get("description"), cb.literal(""))),
-                                p));
-                ors.add(
-                        cb.like(
-                                cb.lower(cb.coalesce(root.get("departureLocation"), cb.literal(""))),
                                 p));
                 ors.add(
                         cb.like(
@@ -62,13 +57,6 @@ public final class TourSpecifications {
             }
             if (maxDurationDays != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("durationDays"), maxDurationDays));
-            }
-            if (departureContains != null && !departureContains.isBlank()) {
-                String dp = "%" + departureContains.trim().toLowerCase() + "%";
-                predicates.add(
-                        cb.like(
-                                cb.lower(cb.coalesce(root.get("departureLocation"), cb.literal(""))),
-                                dp));
             }
             if (destinationId != null) {
                 Join<Tour, TourDestination> td = root.join("tourDestinations");

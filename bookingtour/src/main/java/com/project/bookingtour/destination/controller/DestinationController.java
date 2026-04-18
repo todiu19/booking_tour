@@ -44,7 +44,7 @@ public class DestinationController {
     @GetMapping("/top")
     public ApiResponse<List<DestinationResponse>> getTopDestinations(
             @RequestParam(defaultValue = "10") int size) {
-        int limit = Math.min(Math.max(size, 6), 20);
+        int limit = Math.min(Math.max(size, 10), 20);
         ApiResponse<List<DestinationResponse>> res = new ApiResponse<>();
         res.setData(destinationService.getTopDestinations(limit));
         return res;

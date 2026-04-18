@@ -1,6 +1,8 @@
 package com.project.bookingtour.tour.service;
 
 import com.project.bookingtour.common.dto.request.TourCreateRequest;
+import com.project.bookingtour.common.dto.request.TourItineraryHotelRequest;
+import com.project.bookingtour.common.dto.request.TourItineraryRequest;
 import com.project.bookingtour.common.dto.request.TourUpdateRequest;
 import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.dto.response.TourResponse;
@@ -8,21 +10,29 @@ import com.project.bookingtour.common.enums.TourStatus;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.domain.entity.Destination;
+import com.project.bookingtour.domain.entity.Hotel;
 import com.project.bookingtour.domain.entity.Tour;
 import com.project.bookingtour.domain.entity.TourDestination;
 import com.project.bookingtour.domain.entity.TourDestinationId;
 import com.project.bookingtour.domain.entity.TourImage;
+import com.project.bookingtour.domain.entity.TourItinerary;
+import com.project.bookingtour.domain.entity.TourItineraryHotel;
 import com.project.bookingtour.domain.repository.DestinationRepository;
+import com.project.bookingtour.domain.repository.HotelRepository;
 import com.project.bookingtour.domain.repository.TourImageRepository;
+import com.project.bookingtour.domain.repository.TourItineraryRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
 import com.project.bookingtour.domain.repository.TourDestinationRepository;
 import com.project.bookingtour.domain.repository.TourSpecifications;
 import com.project.bookingtour.storage.StorageService;
 import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.LinkedHashMap;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -42,6 +52,8 @@ public class TourService {
     private final DestinationRepository destinationRepository;
     private final TourDestinationRepository tourDestinationRepository;
     private final TourImageRepository tourImageRepository;
+    private final TourItineraryRepository tourItineraryRepository;
+    private final HotelRepository hotelRepository;
     private final StorageService storageService;
 
     public List<TourResponse> getPublishedLatest(int limit) {
@@ -72,9 +84,10 @@ public class TourService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public TourResponse getTour(Long id) {
         return tourRepository
-                .findById(id)
+                .findDetailById(id)
                 .map(TourResponse::from)
                 .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
     }
@@ -95,7 +108,6 @@ public class TourService {
             BigDecimal maxPrice,
             Integer minDurationDays,
             Integer maxDurationDays,
-            String departureContains,
             Long destinationId) {
         int safeSize = Math.min(Math.max(size, 1), MAX_CATALOG_PAGE_SIZE);
         if (minPrice != null
@@ -119,7 +131,6 @@ public class TourService {
                         && maxPrice == null
                         && minDurationDays == null
                         && maxDurationDays == null
-                        && (departureContains == null || departureContains.isBlank())
                         && destinationId == null;
 
         Page<Tour> result =
@@ -132,7 +143,6 @@ public class TourService {
                                         maxPrice,
                                         minDurationDays,
                                         maxDurationDays,
-                                        departureContains,
                                         destinationId),
                                 pr);
         return PageResponse.fromPage(result.map(TourResponse::from));
@@ -162,13 +172,16 @@ public class TourService {
         tour.setName(req.getName().trim());
         tour.setDescription(req.getDescription());
         tour.setDurationDays(req.getDurationDays() != null ? req.getDurationDays() : 1);
-        tour.setDepartureLocation(req.getDepartureLocation());
+        tour.setDepartureDate(req.getDepartureDate());
         tour.setBasePrice(req.getBasePrice() != null ? req.getBasePrice() : BigDecimal.ZERO);
         tour.setDestinationList(req.getDestinationList());
         tour.setStatus(req.getStatus() != null ? req.getStatus() : TourStatus.published);
         Tour saved = tourRepository.save(tour);
         if (req.getDestinationIds() != null) {
             syncDestinations(saved, req.getDestinationIds());
+        }
+        if (req.getItineraries() != null) {
+            syncItineraries(saved, req.getItineraries());
         }
         return TourResponse.from(saved);
     }
@@ -209,8 +222,8 @@ public class TourService {
         if (req.getDurationDays() != null) {
             tour.setDurationDays(req.getDurationDays());
         }
-        if (req.getDepartureLocation() != null) {
-            tour.setDepartureLocation(req.getDepartureLocation());
+        if (req.getDepartureDate() != null) {
+            tour.setDepartureDate(req.getDepartureDate());
         }
         if (req.getBasePrice() != null) {
             tour.setBasePrice(req.getBasePrice());
@@ -223,7 +236,11 @@ public class TourService {
         if (req.getStatus() != null) {
             tour.setStatus(req.getStatus());
         }
-        return TourResponse.from(tourRepository.save(tour));
+        Tour saved = tourRepository.save(tour);
+        if (req.getItineraries() != null) {
+            syncItineraries(saved, req.getItineraries());
+        }
+        return TourResponse.from(saved);
     }
 
     @Transactional
@@ -310,5 +327,71 @@ public class TourService {
             image.setDisplayOrder(nextDisplayOrder++);
             tourImageRepository.save(image);
         }
+    }
+
+    private void syncItineraries(Tour tour, List<TourItineraryRequest> itineraries) {
+        tourItineraryRepository.deleteByTour_Id(tour.getId());
+        if (itineraries == null || itineraries.isEmpty()) {
+            return;
+        }
+        List<TourItineraryRequest> sorted =
+                itineraries.stream()
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparing(i -> i.getDayNumber() == null ? Integer.MAX_VALUE : i.getDayNumber()))
+                        .toList();
+        for (TourItineraryRequest req : sorted) {
+            if (req.getDayNumber() == null) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "itinerary dayNumber is required");
+            }
+            if (req.getTitle() == null || req.getTitle().isBlank()) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "itinerary title is required");
+            }
+            TourItinerary itinerary = new TourItinerary();
+            itinerary.setTour(tour);
+            itinerary.setDayNumber(req.getDayNumber());
+            itinerary.setTitle(req.getTitle().trim());
+            itinerary.setDescription(req.getDescription());
+            if (req.getHotels() != null) {
+                itinerary.setItineraryHotels(buildItineraryHotels(itinerary, req.getHotels()));
+            }
+            tourItineraryRepository.save(itinerary);
+        }
+    }
+
+    private Set<TourItineraryHotel> buildItineraryHotels(
+            TourItinerary itinerary, List<TourItineraryHotelRequest> hotelRequests) {
+        List<Long> hotelIds =
+                hotelRequests.stream()
+                        .filter(Objects::nonNull)
+                        .map(TourItineraryHotelRequest::getHotelId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        Map<Long, Hotel> hotelsById =
+                hotelIds.isEmpty()
+                        ? Map.of()
+                        : hotelRepository.findAllById(hotelIds).stream()
+                                .collect(Collectors.toMap(Hotel::getId, h -> h));
+        if (hotelsById.size() != hotelIds.size()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "One or more hotelIds do not exist");
+        }
+        return hotelRequests.stream()
+                .filter(Objects::nonNull)
+                .map(
+                        req -> {
+                            if (req.getHotelId() == null) {
+                                throw new AppException(ErrorCode.BAD_REQUEST, "hotelId is required");
+                            }
+                            Hotel hotel = hotelsById.get(req.getHotelId());
+                            if (hotel == null) {
+                                throw new AppException(ErrorCode.BAD_REQUEST, "Invalid hotelId: " + req.getHotelId());
+                            }
+                            TourItineraryHotel item = new TourItineraryHotel();
+                            item.setItinerary(itinerary);
+                            item.setHotel(hotel);
+                            item.setNightCount(req.getNightCount());
+                            return item;
+                        })
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 }

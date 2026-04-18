@@ -3,6 +3,7 @@ package com.project.bookingtour.security;
 import com.project.bookingtour.config.AuthCookieProperties;
 import com.project.bookingtour.config.CorsProperties;
 import com.project.bookingtour.config.JwtProperties;
+import com.project.bookingtour.config.VnpayProperties;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -23,7 +24,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, AuthCookieProperties.class, CorsProperties.class})
+@EnableConfigurationProperties({
+    JwtProperties.class,
+    AuthCookieProperties.class,
+    CorsProperties.class,
+    VnpayProperties.class
+})
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -55,6 +61,8 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(HttpMethod.GET, "/destinations", "/destinations/**")
                                         .permitAll()
+                                        .requestMatchers(HttpMethod.GET, "/reviews", "/reviews/**")
+                                        .permitAll()
                                         .requestMatchers(HttpMethod.GET, "/payments/vnpay/ipn")
                                         .permitAll()
                                         .requestMatchers(HttpMethod.GET, "/me")
@@ -69,7 +77,7 @@ public class SecurityConfig {
                                         .authenticated()
                                         .requestMatchers(HttpMethod.POST, "/reviews")
                                         .authenticated()
-                                        .requestMatchers(HttpMethod.GET, "/invoices/me", "/invoices/me/**")
+                                        .requestMatchers(HttpMethod.GET, "/invoices/me/**")
                                         .authenticated()
                                         .requestMatchers(HttpMethod.PUT, "/update")
                                         .authenticated()
@@ -91,12 +99,12 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        List<String> origins = corsProperties.allowedOrigins();
-        if (origins == null || origins.isEmpty()) {
+        List<String> originPatterns = corsProperties.allowedOrigins();
+        if (originPatterns == null || originPatterns.isEmpty()) {
             config.addAllowedOriginPattern("*");
             config.setAllowCredentials(false);
         } else {
-            config.setAllowedOrigins(origins);
+            config.setAllowedOriginPatterns(originPatterns);
             config.setAllowCredentials(true);
         }
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

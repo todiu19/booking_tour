@@ -14,6 +14,7 @@ public class BookingResponse {
     private String bookingCode;
     private Long userId;
     private Long tourId;
+    private String tourName;
     private String contactName;
     private String contactPhone;
     private String contactEmail;
@@ -38,6 +39,7 @@ public class BookingResponse {
         r.setBookingCode(b.getBookingCode());
         r.setUserId(b.getUser() != null ? b.getUser().getId() : null);
         r.setTourId(b.getTour() != null ? b.getTour().getId() : null);
+        r.setTourName(b.getTour() != null ? b.getTour().getName() : null);
         r.setContactName(b.getContactName());
         r.setContactPhone(b.getContactPhone());
         r.setContactEmail(b.getContactEmail());

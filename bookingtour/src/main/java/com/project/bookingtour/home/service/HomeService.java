@@ -18,7 +18,7 @@ public class HomeService {
      * {@code size} clamp 6–20; tìm kiếm / lọc theo tiêu chí dùng {@code GET /tours} (query params).
      */
     public HomeResponse getHomeData(int size) {
-        int limit = Math.min(Math.max(size, 6), 20);
+        int limit = Math.min(Math.max(size, 10), 20);
 
         HomeResponse h = new HomeResponse();
         h.setFeaturedTours(tourService.getPublishedFeatured(limit));

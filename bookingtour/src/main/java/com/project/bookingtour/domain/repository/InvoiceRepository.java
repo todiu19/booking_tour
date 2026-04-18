@@ -3,8 +3,6 @@ package com.project.bookingtour.domain.repository;
 import com.project.bookingtour.domain.entity.Invoice;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,8 +14,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findByBooking_Id(Long bookingId);
 
     List<Invoice> findByBooking_IdIn(List<Long> bookingIds);
-
-    Page<Invoice> findByUser_Id(Long userId, Pageable pageable);
 
     Optional<Invoice> findByIdAndUser_Id(Long id, Long userId);
 

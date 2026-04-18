@@ -2,18 +2,16 @@ package com.project.bookingtour.invoice.controller;
 
 import com.project.bookingtour.common.dto.ApiResponse;
 import com.project.bookingtour.common.dto.response.InvoiceResponse;
-import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.invoice.service.InvoiceService;
 import com.project.bookingtour.security.AppUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
 @RequestMapping("/invoices")
@@ -21,19 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
-
-    @GetMapping("/me")
-    public ApiResponse<PageResponse<InvoiceResponse>> myInvoices(
-            @AuthenticationPrincipal AppUserDetails principal,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        if (principal == null) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-        ApiResponse<PageResponse<InvoiceResponse>> res = new ApiResponse<>();
-        res.setData(invoiceService.listMyInvoices(principal.getId(), page, size));
-        return res;
-    }
 
     @GetMapping("/me/{id}")
     public ApiResponse<InvoiceResponse> myInvoiceById(

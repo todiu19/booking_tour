@@ -4,6 +4,7 @@ import com.project.bookingtour.common.enums.TourStatus;
 import com.project.bookingtour.domain.entity.Tour;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,9 @@ import org.springframework.stereotype.Repository;
 public interface TourRepository extends JpaRepository<Tour, Long>, JpaSpecificationExecutor<Tour> {
 
     Optional<Tour> findByCode(String code);
+
+    @EntityGraph(attributePaths = {"itineraries", "itineraries.itineraryHotels", "itineraries.itineraryHotels.hotel"})
+    Optional<Tour> findDetailById(Long id);
 
     boolean existsByCode(String code);
 

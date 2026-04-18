@@ -1,8 +1,11 @@
 package com.project.bookingtour.booking.service;
 
 import com.project.bookingtour.common.dto.request.BookingCreateRequest;
+import com.project.bookingtour.common.dto.request.PaymentCreateRequest;
+import com.project.bookingtour.common.dto.response.BookingCheckoutResponse;
 import com.project.bookingtour.common.dto.response.BookingResponse;
 import com.project.bookingtour.common.dto.response.PageResponse;
+import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
 import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
 import com.project.bookingtour.common.exception.AppException;
@@ -15,6 +18,7 @@ import com.project.bookingtour.domain.repository.BookingRepository;
 import com.project.bookingtour.domain.repository.InvoiceRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
 import com.project.bookingtour.domain.repository.UserRepository;
+import com.project.bookingtour.payment.service.PaymentService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,6 +41,7 @@ public class BookingService {
     private final UserRepository userRepository;
     private final TourRepository tourRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentService paymentService;
 
     @Transactional(readOnly = true)
     public PageResponse<BookingResponse> listMyBookings(Long userId, int page, int size) {
@@ -65,19 +70,25 @@ public class BookingService {
         return PageResponse.fromPage(mapped);
     }
 
+    @Transactional(readOnly = true)
+    public BookingResponse getMyBooking(Long userId, Long bookingId) {
+        Booking booking =
+                bookingRepository
+                        .findByIdAndUser_Id(bookingId, userId)
+                        .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+        BookingResponse response = BookingResponse.from(booking);
+        invoiceRepository.findByBooking_Id(booking.getId()).ifPresent(inv -> response.setInvoiceId(inv.getId()));
+        response.setCanViewInvoice(booking.getPaymentStatus() == BookingPaymentStatus.paid);
+        return response;
+    }
+
     @Transactional
-    public BookingResponse createBooking(Long userId, BookingCreateRequest req) {
+    public BookingCheckoutResponse createBooking(Long userId, BookingCreateRequest req, String ipAddress) {
         if (req.getTourId() == null) {
             throw new AppException(ErrorCode.BAD_REQUEST, "tourId is required");
         }
-        if (req.getContactName() == null || req.getContactName().isBlank()) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "contactName is required");
-        }
-        if (req.getContactPhone() == null || req.getContactPhone().isBlank()) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "contactPhone is required");
-        }
-        if (req.getContactEmail() == null || req.getContactEmail().isBlank()) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "contactEmail is required");
+        if (req.getPaymentMethod() == null) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "paymentMethod is required");
         }
 
         int adult = req.getAdultCount() == null ? 0 : req.getAdultCount();
@@ -91,6 +102,28 @@ public class BookingService {
                 userRepository
                         .findById(userId)
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        String contactName =
+                req.getContactName() != null && !req.getContactName().isBlank()
+                        ? req.getContactName().trim()
+                        : user.getFullName();
+        String contactPhone =
+                req.getContactPhone() != null && !req.getContactPhone().isBlank()
+                        ? req.getContactPhone().trim()
+                        : user.getPhone();
+        String contactEmail =
+                req.getContactEmail() != null && !req.getContactEmail().isBlank()
+                        ? req.getContactEmail().trim()
+                        : user.getEmail();
+
+        if (contactName == null || contactName.isBlank()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "contactName is required");
+        }
+        if (contactPhone == null || contactPhone.isBlank()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "contactPhone is required");
+        }
+        if (contactEmail == null || contactEmail.isBlank()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "contactEmail is required");
+        }
         Tour tour =
                 tourRepository
                         .findById(req.getTourId())
@@ -100,9 +133,9 @@ public class BookingService {
         booking.setBookingCode(generateBookingCode());
         booking.setUser(user);
         booking.setTour(tour);
-        booking.setContactName(req.getContactName().trim());
-        booking.setContactPhone(req.getContactPhone().trim());
-        booking.setContactEmail(req.getContactEmail().trim());
+        booking.setContactName(contactName);
+        booking.setContactPhone(contactPhone);
+        booking.setContactEmail(contactEmail);
         booking.setAdultCount(adult);
         booking.setChildCount(child);
         BigDecimal unitPrice = tour.getBasePrice() == null ? BigDecimal.ZERO : tour.getBasePrice();
@@ -111,7 +144,18 @@ public class BookingService {
         booking.setPaymentStatus(BookingPaymentStatus.unpaid);
         booking.setNote(req.getNote());
 
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        PaymentCreateRequest paymentReq = new PaymentCreateRequest();
+        paymentReq.setBookingId(saved.getId());
+        paymentReq.setProvider(req.getPaymentMethod());
+        PaymentCheckoutResponse checkout = paymentService.payBooking(userId, paymentReq, ipAddress);
+
+        BookingCheckoutResponse result = new BookingCheckoutResponse();
+        result.setBooking(BookingResponse.from(saved));
+        result.setPayment(checkout.getPayment());
+        result.setInvoice(checkout.getInvoice());
+        result.setPaymentUrl(checkout.getPaymentUrl());
+        return result;
     }
 
     @Transactional

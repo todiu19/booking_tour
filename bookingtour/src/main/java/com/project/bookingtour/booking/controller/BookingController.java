@@ -3,11 +3,13 @@ package com.project.bookingtour.booking.controller;
 import com.project.bookingtour.booking.service.BookingService;
 import com.project.bookingtour.common.dto.ApiResponse;
 import com.project.bookingtour.common.dto.request.BookingCreateRequest;
+import com.project.bookingtour.common.dto.response.BookingCheckoutResponse;
 import com.project.bookingtour.common.dto.response.BookingResponse;
 import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.security.AppUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,15 +41,29 @@ public class BookingController {
         return res;
     }
 
-    @PostMapping
-    public ApiResponse<BookingResponse> create(
-            @AuthenticationPrincipal AppUserDetails principal,
-            @RequestBody BookingCreateRequest request) {
+    @GetMapping("/me/{id}")
+    public ApiResponse<BookingResponse> myBookingDetail(
+            @AuthenticationPrincipal AppUserDetails principal, @PathVariable Long id) {
         if (principal == null) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
         ApiResponse<BookingResponse> res = new ApiResponse<>();
-        res.setData(bookingService.createBooking(principal.getId(), request));
+        res.setData(bookingService.getMyBooking(principal.getId(), id));
+        return res;
+    }
+
+    @PostMapping
+    public ApiResponse<BookingCheckoutResponse> create(
+            @AuthenticationPrincipal AppUserDetails principal,
+            @RequestBody BookingCreateRequest request,
+            HttpServletRequest httpServletRequest) {
+        if (principal == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        ApiResponse<BookingCheckoutResponse> res = new ApiResponse<>();
+        res.setData(
+                bookingService.createBooking(
+                        principal.getId(), request, httpServletRequest.getRemoteAddr()));
         res.setMessage("Booking created");
         return res;
     }

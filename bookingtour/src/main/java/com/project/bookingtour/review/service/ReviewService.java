@@ -1,6 +1,7 @@
 package com.project.bookingtour.review.service;
 
 import com.project.bookingtour.common.dto.request.ReviewCreateRequest;
+import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.dto.response.ReviewResponse;
 import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
@@ -15,6 +16,9 @@ import com.project.bookingtour.domain.repository.ReviewRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
 import com.project.bookingtour.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,19 @@ public class ReviewService {
     private final BookingRepository bookingRepository;
     private final TourRepository tourRepository;
     private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public PageResponse<ReviewResponse> getVisibleReviewsByTour(Long tourId, int page, int size) {
+        if (tourId == null) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "tourId is required");
+        }
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        PageRequest pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "id"));
+        Page<Review> result =
+                reviewRepository.findByTour_IdAndStatus(tourId, ReviewStatus.visible, pageable);
+        return PageResponse.fromPage(result.map(ReviewResponse::from));
+    }
 
     @Transactional
     public ReviewResponse createMyReview(Long userId, ReviewCreateRequest req) {

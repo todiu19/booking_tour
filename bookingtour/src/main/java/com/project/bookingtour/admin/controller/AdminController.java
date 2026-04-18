@@ -7,9 +7,11 @@ import com.project.bookingtour.common.dto.request.TourCreateRequest;
 import com.project.bookingtour.common.dto.request.TourUpdateRequest;
 import com.project.bookingtour.common.dto.request.UserCreateRequest;
 import com.project.bookingtour.common.dto.request.UserUpdateRequest;
+import com.project.bookingtour.common.dto.response.AdminPaymentItemResponse;
 import com.project.bookingtour.common.dto.response.DestinationResponse;
 import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
+import com.project.bookingtour.common.dto.response.PaymentResponse;
 import com.project.bookingtour.common.dto.response.TourResponse;
 import com.project.bookingtour.common.dto.response.UserResponse;
 import com.project.bookingtour.admin.service.AdminService;
@@ -143,6 +145,13 @@ public class AdminController {
         ApiResponse<PaymentCheckoutResponse> res = new ApiResponse<>();
         res.setData(adminService.confirmCodCollected(id));
         res.setMessage("COD collected and invoice generated");
+        return res;
+    }
+
+    @GetMapping("/payments")
+    public ApiResponse<List<AdminPaymentItemResponse>> listPaymentsForAdmin() {
+        ApiResponse<List<AdminPaymentItemResponse>> res = new ApiResponse<>();
+        res.setData(adminService.listPaymentsForAdmin());
         return res;
     }
 

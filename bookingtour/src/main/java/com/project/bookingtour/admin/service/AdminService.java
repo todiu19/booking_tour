@@ -8,7 +8,9 @@ import com.project.bookingtour.common.dto.request.UserCreateRequest;
 import com.project.bookingtour.common.dto.request.UserUpdateRequest;
 import com.project.bookingtour.common.dto.response.DestinationResponse;
 import com.project.bookingtour.common.dto.response.PageResponse;
+import com.project.bookingtour.common.dto.response.AdminPaymentItemResponse;
 import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
+import com.project.bookingtour.common.dto.response.PaymentResponse;
 import com.project.bookingtour.common.dto.response.TourResponse;
 import com.project.bookingtour.common.dto.response.UserResponse;
 import com.project.bookingtour.destination.service.DestinationService;
@@ -83,6 +85,14 @@ public class AdminService {
 
     public PaymentCheckoutResponse confirmCodCollected(Long paymentId) {
         return paymentService.confirmCodCollected(paymentId);
+    }
+
+    public List<PaymentResponse> listPendingCodPayments() {
+        return paymentService.listPendingCodPayments();
+    }
+
+    public List<AdminPaymentItemResponse> listPaymentsForAdmin() {
+        return paymentService.listPaymentsForAdmin();
     }
 
 }

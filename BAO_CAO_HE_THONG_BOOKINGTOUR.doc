@@ -1,0 +1,206 @@
+BAO CAO HE THONG BOOKINGTOUR (FE + BE)
+
+1. THONG TIN CHUNG
+- Ten de tai: Xay dung he thong dat tour du lich BookingTour.
+- Muc tieu:
+  + Xay dung he thong dat tour co day du cac chuc nang nguoi dung va quan tri.
+  + Dong bo du lieu giua Frontend (React) va Backend (Spring Boot).
+  + Ho tro luong dat tour, thanh toan, xac nhan COD, hoa don va danh gia.
+
+
+2. KIEN TRUC HE THONG
+
+2.1 Frontend
+- Cong nghe: React + Vite + React Router.
+- Vai tro:
+  + Hien thi giao dien nguoi dung va trang admin.
+  + Goi API den backend qua file trung tam api.js.
+  + Quan ly dieu huong, trang thai login, popup bat buoc dang nhap.
+
+2.2 Backend
+- Cong nghe: Spring Boot, Spring Security, JPA/Hibernate, MySQL.
+- Vai tro:
+  + Cung cap API cho tour, booking, payment, invoice, review, admin.
+  + Xac thuc va phan quyen theo role.
+  + Xu ly nghiep vu dat tour va thanh toan.
+
+2.3 Co so du lieu
+- He quan tri: MySQL.
+- Cac bang chinh:
+  + users, roles
+  + tours, destinations, tour_destinations, tour_images
+  + bookings, payments, invoices
+  + reviews
+
+
+3. CHUC NANG DA TRIEN KHAI
+
+3.1 Chuc nang nguoi dung
+- Xem trang chu, danh sach tour, danh sach diem den.
+- Loc/tim kiem tour theo tu khoa va diem den.
+- Xem chi tiet tour, danh gia trung binh, danh sach review.
+- Dat tour theo luong moi:
+  + Tu trang chi tiet tour chi con nut "Book tour".
+  + Chuyen sang trang dat tour rieng.
+  + Dien thong tin lien he + chon phuong thuc thanh toan.
+  + Tao booking va tao payment ngay khi book.
+- Xem danh sach booking cua toi.
+- Xem chi tiet 1 booking.
+- Xem hoa don neu booking da thanh toan.
+- Viet review sau khi co booking.
+
+3.2 Chuc nang admin
+- Quan ly user (xem danh sach, xem chi tiet, khoa user).
+- Quan ly tour (xem, tao, cap nhat, archive).
+- Quan ly diem den (tao/cap nhat).
+- Quan ly payment:
+  + Hien thi tat ca payment theo thoi gian.
+  + COD pending co the confirm COD.
+  + Sau khi confirm COD sinh hoa don va cap nhat trang thai.
+
+3.3 Chuc nang bao mat va dieu huong
+- Login/Register/Logout.
+- Role-based access (admin va user).
+- Logout redirect ve home.
+- Neu goi API can login ma chua login:
+  + FE hien modal giua man hinh:
+    "Ban phai dang nhap de thuc hien chuc nang"
+  + Co nut Dang nhap / Dang ky.
+  + Co nut X de dong modal va quay ve man hinh chinh.
+
+
+4. THAY DOI NOI BAT THEO QUA TRINH PHAT TRIEN
+
+4.1 Chuan hoa du lieu tour
+- Da loai bo truong departure khoi FE/BE.
+- Chinh sua entity/schema/data seed de tuong thich DB cu.
+- Hien thi diem den tren card theo dinh dang dep:
+  + Bo ky tu ["..."]
+  + Doi dau phay thanh dau " / ".
+
+4.2 Dat tour va thanh toan
+- Truoc day:
+  + Tao booking truoc, thanh toan sau.
+- Hien tai:
+  + Chon payment method ngay trong form dat tour.
+  + Book xong tao payment luon.
+  + VNPay tra paymentUrl de redirect.
+  + COD tao payment pending cho admin confirm.
+
+4.3 Giao dien
+- Header dieu huong + tim kiem.
+- Footer luon nam duoi cung man hinh.
+- Card tour:
+  + Giu nut "Xem chi tiet".
+  + Click bat ky dau tren card deu vao detail.
+- Trang booking rieng:
+  + Layout 2 cot:
+    * Trai: form lien he.
+    * Phai tren: thong tin tour + anh.
+    * Phai duoi: tong chi phi + nut Book.
+
+
+5. API CHINH DANG DUOC FE SU DUNG
+
+5.1 Public
+- GET /home
+- GET /tours
+- GET /tours/{id}
+- GET /destinations
+- GET /destinations/top
+- GET /destinations/{id}
+- GET /destinations/{id}/tours
+- GET /reviews/tour/{tourId}
+
+5.2 User (can dang nhap)
+- GET /me
+- PUT /update
+- PUT /password
+- POST /bookings
+- GET /bookings/me
+- GET /bookings/me/{id}
+- PUT /bookings/{id}/cancel
+- GET /invoices/me/{id}
+- POST /reviews
+
+5.3 Auth
+- POST /auth/login
+- POST /auth/register
+- POST /auth/logout
+
+5.4 Admin
+- GET /dashboard
+- GET /admin/users
+- GET /admin/users/{id}
+- POST /admin/users
+- PUT /admin/users/{id}/block
+- GET /admin/tours
+- POST /admin/tour
+- PUT /admin/tour/{id}
+- PUT /admin/tour/{id}/archive
+- POST /admin/destination
+- PUT /admin/destination/{id}
+- GET /admin/payments
+- POST /admin/payments/{id}/confirm-cod
+
+
+6. KIEM THU THUC TE (MANUAL)
+
+6.1 Luong user
+- Dang ky tai khoan moi -> dang nhap thanh cong.
+- Mo trang tour -> vao chi tiet -> "Book tour" -> sang trang dat.
+- Book voi COD:
+  + Tao booking thanh cong.
+  + Booking xuat hien trong "Dat cho cua toi".
+- Book voi VNPay:
+  + He thong tra paymentUrl va redirect.
+
+6.2 Luong admin
+- Dang nhap admin.
+- Vao danh sach payment:
+  + Thay tat ca payment theo thu tu thoi gian.
+  + COD pending co nut confirm.
+- Confirm COD:
+  + payment status doi sang success.
+  + booking payment status = paid.
+  + Co hoa don de user xem.
+
+6.3 Bao mat
+- Dang xuat -> ve Home.
+- Khi chua login ma thao tac can auth -> hien modal yeu cau dang nhap.
+
+
+7. CAC VAN DE DA GAP VA CACH KHAC PHUC
+- Failed to fetch:
+  + Nguyen nhan: backend chua chay/loi startup.
+  + Khac phuc: sua data.sql tuong thich schema, restart backend.
+- Loi bang tour_schedules khong ton tai:
+  + Khac phuc: bo seed phu thuoc tour_schedules, seed linh hoat.
+- Loi field cu departure:
+  + Khac phuc: bo khoi entity/schema/data va migration tuong thich.
+- White screen FE:
+  + Khac phuc: sua import/router component va cach run dung bang Vite.
+
+
+8. KET QUA DAT DUOC
+- Hoan thien he thong dat tour co day du luong nghiep vu chinh.
+- Dong bo FE-BE theo contract API ro rang.
+- Giao dien da duoc cai tien theo huong de su dung, de mo rong.
+- Da co co che xu ly tinh huong chua dang nhap than thien voi nguoi dung.
+
+
+9. HUONG PHAT TRIEN TIEP
+- Bo sung bo loc nang cao cho trang payment admin (provider/status/date range).
+- Them export bao cao (CSV/Excel/PDF).
+- Them test tu dong (unit + integration + e2e).
+- Bo sung thong bao realtime (WebSocket) khi payment status thay doi.
+- Toi uu truy van review/rating de giam so lan goi API tung card.
+
+
+10. KET LUAN
+He thong BookingTour da dat duoc muc tieu chinh:
+- Quan ly tour, dat tour, thanh toan, hoa don, review.
+- Phan quyen admin/user ro rang.
+- Trien khai duoc luong nghiep vu tu FE den BE va DB.
+San sang cho giai doan nang cap va toi uu tiep theo.
+

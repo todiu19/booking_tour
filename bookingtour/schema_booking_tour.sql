@@ -37,7 +37,7 @@ CREATE TABLE tours (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     duration_days INT UNSIGNED NOT NULL DEFAULT 1,
-    departure_location VARCHAR(150),
+    departure_date DATE NULL,
     base_price DECIMAL(12,2) NOT NULL DEFAULT 0,
     destination_list JSON NULL, -- e.g. ["Da Nang","Hoi An"]
     status ENUM('published','archived') NOT NULL DEFAULT 'published',
@@ -88,7 +88,50 @@ CREATE TABLE tour_destinations (
       ON DELETE RESTRICT
 );
 
--- 7) BOOKINGS
+-- 7) HOTELS
+CREATE TABLE hotels (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address VARCHAR(255) NULL,
+    stars TINYINT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 8) TOUR_ITINERARIES
+CREATE TABLE tour_itineraries (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tour_id BIGINT UNSIGNED NOT NULL,
+    day_number INT UNSIGNED NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_ti_tour_day (tour_id, day_number),
+    CONSTRAINT fk_ti_tour
+      FOREIGN KEY (tour_id) REFERENCES tours(id)
+      ON DELETE CASCADE
+);
+
+CREATE INDEX idx_ti_tour_day ON tour_itineraries (tour_id, day_number);
+
+-- 9) TOUR_ITINERARY_HOTELS
+CREATE TABLE tour_itinerary_hotels (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    itinerary_id BIGINT UNSIGNED NOT NULL,
+    hotel_id BIGINT UNSIGNED NOT NULL,
+    night_count INT UNSIGNED NULL,
+    CONSTRAINT fk_tih_itinerary
+      FOREIGN KEY (itinerary_id) REFERENCES tour_itineraries(id)
+      ON DELETE CASCADE,
+    CONSTRAINT fk_tih_hotel
+      FOREIGN KEY (hotel_id) REFERENCES hotels(id)
+      ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_tih_itinerary ON tour_itinerary_hotels (itinerary_id);
+CREATE INDEX idx_tih_hotel ON tour_itinerary_hotels (hotel_id);
+
+-- 10) BOOKINGS
 CREATE TABLE bookings (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     booking_code VARCHAR(30) NOT NULL,
@@ -118,7 +161,7 @@ CREATE TABLE bookings (
 CREATE INDEX idx_bookings_user_created ON bookings (user_id, created_at);
 CREATE INDEX idx_bookings_tour_status ON bookings (tour_id, booking_status);
 
--- 8) PAYMENTS
+-- 11) PAYMENTS
 CREATE TABLE payments (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     booking_id BIGINT UNSIGNED NOT NULL,
@@ -141,7 +184,7 @@ CREATE INDEX idx_payments_booking_status ON payments (booking_id, payment_status
 -- ALTER TABLE payments
 --   MODIFY provider ENUM('vnpay','cod') NOT NULL;
 
--- 9) INVOICES
+-- 12) INVOICES
 CREATE TABLE invoices (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     invoice_no VARCHAR(30) NOT NULL,
@@ -174,7 +217,7 @@ CREATE TABLE invoices (
 
 CREATE INDEX idx_invoices_user_created ON invoices (user_id, created_at);
 
--- 10) REVIEWS
+-- 13) REVIEWS
 CREATE TABLE reviews (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tour_id BIGINT UNSIGNED NOT NULL,

@@ -1,9 +1,11 @@
 package com.project.bookingtour.common.dto.response;
 
 import com.project.bookingtour.common.enums.TourStatus;
+import com.project.bookingtour.domain.entity.TourItinerary;
 import com.project.bookingtour.domain.entity.Tour;
 import com.project.bookingtour.domain.entity.TourImage;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import lombok.Data;
@@ -16,9 +18,10 @@ public class TourResponse {
     private String name;
     private String description;
     private Integer durationDays;
-    private String departureLocation;
+    private LocalDate departureDate;
     private BigDecimal basePrice;
     private String destinationList;
+    private List<TourItineraryResponse> itineraries;
     private List<String> imageUrls;
     private String thumbnailUrl;
     private TourStatus status;
@@ -33,9 +36,17 @@ public class TourResponse {
         r.setName(t.getName());
         r.setDescription(t.getDescription());
         r.setDurationDays(t.getDurationDays());
-        r.setDepartureLocation(t.getDepartureLocation());
+        r.setDepartureDate(t.getDepartureDate());
         r.setBasePrice(t.getBasePrice());
         r.setDestinationList(t.getDestinationList());
+        List<TourItineraryResponse> itineraryResponses =
+                t.getItineraries() == null
+                        ? List.of()
+                        : t.getItineraries().stream()
+                                .sorted(Comparator.comparing(TourItinerary::getDayNumber))
+                                .map(TourItineraryResponse::from)
+                                .toList();
+        r.setItineraries(itineraryResponses);
         List<String> urls =
                 t.getImages() == null
                         ? List.of()

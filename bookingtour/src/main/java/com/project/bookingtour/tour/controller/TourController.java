@@ -33,7 +33,6 @@ public class TourController {
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Integer minDurationDays,
             @RequestParam(required = false) Integer maxDurationDays,
-            @RequestParam(required = false) String departure,
             @RequestParam(required = false) Long destinationId) {
         ApiResponse<PageResponse<TourResponse>> res = new ApiResponse<>();
         res.setData(
@@ -45,7 +44,6 @@ public class TourController {
                         maxPrice,
                         minDurationDays,
                         maxDurationDays,
-                        departure,
                         destinationId));
         return res;
     }

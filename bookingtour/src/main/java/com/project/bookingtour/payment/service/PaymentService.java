@@ -2,6 +2,7 @@ package com.project.bookingtour.payment.service;
 
 import com.project.bookingtour.config.VnpayProperties;
 import com.project.bookingtour.common.dto.request.PaymentCreateRequest;
+import com.project.bookingtour.common.dto.response.AdminPaymentItemResponse;
 import com.project.bookingtour.common.dto.response.InvoiceResponse;
 import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
 import com.project.bookingtour.common.dto.response.PaymentResponse;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -196,6 +198,23 @@ public class PaymentService {
         res.setPayment(PaymentResponse.from(saved));
         res.setInvoice(InvoiceResponse.from(invoice));
         return res;
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> listPendingCodPayments() {
+        return paymentRepository
+                .findByProviderAndPaymentStatusOrderByCreatedAtDesc(
+                        PaymentProvider.cod, PaymentStatus.pending)
+                .stream()
+                .map(PaymentResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminPaymentItemResponse> listPaymentsForAdmin() {
+        return paymentRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(AdminPaymentItemResponse::from)
+                .toList();
     }
 
     private PaymentCheckoutResponse createVnpayPayment(Booking booking, String ipAddress) {
