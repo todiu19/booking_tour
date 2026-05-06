@@ -13,9 +13,10 @@ public class TourUpdateRequest {
     private String name;
     private String description;
     private Integer durationDays;
-    private LocalDate departureDate;
+    private List<LocalDate> departureDates;
     private BigDecimal basePrice;
     private String destinationList;
+    private String departurePoint;
     private List<Long> destinationIds;
     private List<TourItineraryRequest> itineraries;
     private TourStatus status;

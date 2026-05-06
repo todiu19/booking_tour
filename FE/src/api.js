@@ -29,7 +29,12 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
-    if (res.status === 401 && path !== '/me') {
+    const skipAuthPrompt =
+      path === '/me' ||
+      path === '/auth/login' ||
+      path === '/auth/register' ||
+      path.startsWith('/auth/')
+    if (res.status === 401 && !skipAuthPrompt) {
       window.dispatchEvent(new CustomEvent('app:auth-required'))
     }
     const message = body?.message || `Request failed with status ${res.status}`
@@ -50,6 +55,15 @@ export const api = {
   },
   getTourById(id) {
     return request(`/tours/${id}`)
+  },
+  getHotels(filters) {
+    return request(`/hotels${toQueryString(filters)}`)
+  },
+  getHotelById(id) {
+    return request(`/hotels/${id}`)
+  },
+  getHotelTypes() {
+    return request('/hotels/types')
   },
   getDestinations(filters) {
     return request(`/destinations${toQueryString(filters)}`)
@@ -114,6 +128,24 @@ export const api = {
       body: JSON.stringify({}),
     })
   },
+  createHotelBooking(payload) {
+    return request('/hotel-bookings', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  getMyHotelBookings(page = 0, size = 10) {
+    return request(`/hotel-bookings/me${toQueryString({ page, size })}`)
+  },
+  getMyHotelBookingById(id) {
+    return request(`/hotel-bookings/me/${id}`)
+  },
+  cancelHotelBooking(id) {
+    return request(`/hotel-bookings/${id}/cancel`, {
+      method: 'PUT',
+      body: JSON.stringify({}),
+    })
+  },
   createPayment(payload) {
     return request('/payments', {
       method: 'POST',
@@ -122,6 +154,12 @@ export const api = {
   },
   createReview(payload) {
     return request('/reviews', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  createHotelReview(payload) {
+    return request('/hotel-reviews', {
       method: 'POST',
       body: JSON.stringify(payload),
     })

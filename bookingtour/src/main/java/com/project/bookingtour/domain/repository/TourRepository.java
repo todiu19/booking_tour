@@ -18,7 +18,12 @@ public interface TourRepository extends JpaRepository<Tour, Long>, JpaSpecificat
 
     Optional<Tour> findByCode(String code);
 
-    @EntityGraph(attributePaths = {"itineraries", "itineraries.itineraryHotels", "itineraries.itineraryHotels.hotel"})
+    @EntityGraph(
+            attributePaths = {
+                "itineraries",
+                "itineraries.itineraryHotels",
+                "itineraries.itineraryHotels.hotel"
+            })
     Optional<Tour> findDetailById(Long id);
 
     boolean existsByCode(String code);
@@ -68,4 +73,21 @@ public interface TourRepository extends JpaRepository<Tour, Long>, JpaSpecificat
                     """,
             nativeQuery = true)
     List<Long> findPublishedIdsOrderByAvgRatingAndBookingCount(@Param("limit") int limit);
+
+    @Query(
+            value =
+                    """
+                    SELECT t.id
+                    FROM tours t
+                    LEFT JOIN (
+                        SELECT tour_id, AVG(rating) AS avgr
+                        FROM reviews
+                        WHERE status = 'visible'
+                        GROUP BY tour_id
+                    ) r ON r.tour_id = t.id
+                    WHERE t.status = 'published'
+                    ORDER BY COALESCE(r.avgr, 0) DESC, t.id DESC
+                    """,
+            nativeQuery = true)
+    List<Long> findPublishedIdsOrderByAvgRating();
 }

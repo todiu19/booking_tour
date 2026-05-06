@@ -18,15 +18,23 @@ public class TourResponse {
     private String name;
     private String description;
     private Integer durationDays;
-    private LocalDate departureDate;
+    private List<LocalDate> departureDates;
     private BigDecimal basePrice;
     private String destinationList;
+    /** Điểm xuất phát / tập trung khách (HN, HCM, ĐN, …). */
+    private String departurePoint;
+    private Double averageRating;
+    private Long reviewCount;
     private List<TourItineraryResponse> itineraries;
     private List<String> imageUrls;
     private String thumbnailUrl;
     private TourStatus status;
 
     public static TourResponse from(Tour t) {
+        return from(t, List.of());
+    }
+
+    public static TourResponse from(Tour t, List<LocalDate> departureDates) {
         if (t == null) {
             return null;
         }
@@ -36,9 +44,18 @@ public class TourResponse {
         r.setName(t.getName());
         r.setDescription(t.getDescription());
         r.setDurationDays(t.getDurationDays());
-        r.setDepartureDate(t.getDepartureDate());
+        List<LocalDate> normalizedDepartureDates =
+                departureDates == null
+                        ? List.of()
+                        : departureDates.stream()
+                                .filter(java.util.Objects::nonNull)
+                                .distinct()
+                                .sorted()
+                                .toList();
+        r.setDepartureDates(normalizedDepartureDates);
         r.setBasePrice(t.getBasePrice());
         r.setDestinationList(t.getDestinationList());
+        r.setDeparturePoint(t.getDeparturePoint());
         List<TourItineraryResponse> itineraryResponses =
                 t.getItineraries() == null
                         ? List.of()

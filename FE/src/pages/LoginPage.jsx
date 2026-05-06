@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 
 export default function LoginPage({ onLoginSuccess }) {
@@ -15,9 +15,7 @@ export default function LoginPage({ onLoginSuccess }) {
       setLoading(true)
       setError('')
       setSuccess('')
-      const result = await api.login(form)
-      const displayName = result?.user?.fullName || result?.user?.email || 'User'
-      const roleName = result?.user?.role?.name || 'CUSTOMER'
+      await api.login(form)
       setSuccess(`Login Thành Công`)
       onLoginSuccess?.()
       setTimeout(() => {
@@ -32,30 +30,47 @@ export default function LoginPage({ onLoginSuccess }) {
   }
 
   return (
-    <section className="stack auth-form">
-      <h1>Login</h1>
-      <form onSubmit={submit} className="stack">
-        <input
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-          required
-        />
-        <button type="submit" className="button" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
+    <section className="auth-login-wrap">
+      <div className="auth-login-card panel">
+        <h1>Dang nhap tai khoan</h1>
+        <p className="auth-login-subtitle">Dang nhap de dat tour, dat khach san va theo doi lich su don cua ban.</p>
 
-      {success ? <p className="success">{success}</p> : null}
-      {error ? <p className="error">{error}</p> : null}
+        <form onSubmit={submit} className="auth-login-form">
+          <div className="auth-login-field">
+            <label htmlFor="login-email">Email</label>
+            <input
+              id="login-email"
+              type="email"
+              placeholder="Nhap email cua ban"
+              value={form.email}
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="auth-login-field">
+            <label htmlFor="login-password">Mat khau</label>
+            <input
+              id="login-password"
+              type="password"
+              placeholder="Nhap mat khau"
+              value={form.password}
+              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+              required
+            />
+          </div>
+
+          <button type="submit" className="button auth-login-submit" disabled={loading}>
+            {loading ? 'Dang dang nhap...' : 'Dang nhap'}
+          </button>
+        </form>
+
+        <p className="auth-login-register">
+          Chua co tai khoan? <Link to="/register">Dang ky ngay</Link>
+        </p>
+
+        {success ? <p className="success">{success}</p> : null}
+        {error ? <p className="error">{error}</p> : null}
+      </div>
     </section>
   )
 }

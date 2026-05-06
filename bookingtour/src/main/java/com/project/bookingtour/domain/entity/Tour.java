@@ -11,7 +11,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,14 +48,15 @@ public class Tour {
     @Column(name = "duration_days", nullable = false)
     private Integer durationDays;
 
-    @Column(name = "departure_date")
-    private LocalDate departureDate;
-
     @Column(name = "base_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal basePrice;
 
     @Column(name = "destination_list", columnDefinition = "json")
     private String destinationList;
+
+    /** Điểm tập trung/xuất phát (VD: Hà Nội, TP. Hồ Chí Minh, Đà Nẵng). */
+    @Column(name = "departure_point", length = 64)
+    private String departurePoint;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -76,4 +76,8 @@ public class Tour {
 
     @OneToMany(mappedBy = "tour")
     private Set<TourItinerary> itineraries = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "tour")
+    private Set<TourDeparture> tourDepartures = new LinkedHashSet<>();
+
 }

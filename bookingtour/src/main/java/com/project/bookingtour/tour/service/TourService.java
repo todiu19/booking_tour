@@ -6,6 +6,7 @@ import com.project.bookingtour.common.dto.request.TourItineraryRequest;
 import com.project.bookingtour.common.dto.request.TourUpdateRequest;
 import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.dto.response.TourResponse;
+import com.project.bookingtour.common.enums.ReviewStatus;
 import com.project.bookingtour.common.enums.TourStatus;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
@@ -14,11 +15,14 @@ import com.project.bookingtour.domain.entity.Hotel;
 import com.project.bookingtour.domain.entity.Tour;
 import com.project.bookingtour.domain.entity.TourDestination;
 import com.project.bookingtour.domain.entity.TourDestinationId;
+import com.project.bookingtour.domain.entity.TourDeparture;
 import com.project.bookingtour.domain.entity.TourImage;
 import com.project.bookingtour.domain.entity.TourItinerary;
 import com.project.bookingtour.domain.entity.TourItineraryHotel;
+import com.project.bookingtour.domain.repository.TourDepartureRepository;
 import com.project.bookingtour.domain.repository.DestinationRepository;
 import com.project.bookingtour.domain.repository.HotelRepository;
+import com.project.bookingtour.domain.repository.ReviewRepository;
 import com.project.bookingtour.domain.repository.TourImageRepository;
 import com.project.bookingtour.domain.repository.TourItineraryRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
@@ -26,9 +30,13 @@ import com.project.bookingtour.domain.repository.TourDestinationRepository;
 import com.project.bookingtour.domain.repository.TourSpecifications;
 import com.project.bookingtour.storage.StorageService;
 import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.LinkedHashMap;
@@ -46,14 +54,14 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class TourService {
 
-    private static final int MAX_CATALOG_PAGE_SIZE = 100;
-
     private final TourRepository tourRepository;
     private final DestinationRepository destinationRepository;
     private final TourDestinationRepository tourDestinationRepository;
+    private final TourDepartureRepository tourDepartureRepository;
     private final TourImageRepository tourImageRepository;
     private final TourItineraryRepository tourItineraryRepository;
     private final HotelRepository hotelRepository;
+    private final ReviewRepository reviewRepository;
     private final StorageService storageService;
 
     public List<TourResponse> getPublishedLatest(int limit) {
@@ -61,7 +69,7 @@ public class TourService {
                 .findByStatus(
                         TourStatus.published,
                         PageRequest.of(0, limit, Sort.by("createdAt").descending()))
-                .map(TourResponse::from)
+                .map(this::toResponse)
                 .getContent();
     }
 
@@ -80,7 +88,7 @@ public class TourService {
         return ids.stream()
                 .map(byId::get)
                 .filter(Objects::nonNull)
-                .map(TourResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -88,7 +96,7 @@ public class TourService {
     public TourResponse getTour(Long id) {
         return tourRepository
                 .findDetailById(id)
-                .map(TourResponse::from)
+                .map(this::toResponse)
                 .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
     }
 
@@ -100,16 +108,15 @@ public class TourService {
      * {@link TourSpecifications}.
      */
     @Transactional(readOnly = true)
-    public PageResponse<TourResponse> listPublishedTours(
-            int page,
-            int size,
+    public List<TourResponse> listPublishedTours(
             String keyword,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Integer minDurationDays,
             Integer maxDurationDays,
-            Long destinationId) {
-        int safeSize = Math.min(Math.max(size, 1), MAX_CATALOG_PAGE_SIZE);
+            Long destinationId,
+            String departurePoint,
+            String sortBy) {
         if (minPrice != null
                 && maxPrice != null
                 && minPrice.compareTo(maxPrice) > 0) {
@@ -123,29 +130,119 @@ public class TourService {
                     ErrorCode.BAD_REQUEST,
                     "minDurationDays must be less than or equal to maxDurationDays");
         }
-        PageRequest pr = PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "id"));
+        List<Tour> result =
+                tourRepository.findAll(
+                        TourSpecifications.publishedWithFilters(
+                                null,
+                                minPrice,
+                                maxPrice,
+                                minDurationDays,
+                                maxDurationDays,
+                                destinationId,
+                                departurePoint,
+                                LocalDate.now()),
+                        Sort.by(Sort.Direction.DESC, "id"));
+        LocalDate today = LocalDate.now();
+        Map<Long, Integer> ratingOrder = buildPublishedRatingOrder();
+        String normalizedKeyword = normalizeForSearch(keyword);
+        List<TourResponse> responses =
+                result.stream()
+                .filter(t -> matchesTourKeyword(t, normalizedKeyword))
+                .sorted(buildPublishedTourComparator(sortBy, today, ratingOrder))
+                .map(this::toResponse)
+                .toList();
+        enrichRatingStats(responses);
+        return responses;
+    }
 
-        boolean noFilters =
-                (keyword == null || keyword.isBlank())
-                        && minPrice == null
-                        && maxPrice == null
-                        && minDurationDays == null
-                        && maxDurationDays == null
-                        && destinationId == null;
+    private Comparator<Tour> buildPublishedTourComparator(
+            String sortBy, LocalDate today, Map<Long, Integer> ratingOrder) {
+        String mode = sortBy == null ? "" : sortBy.trim().toLowerCase(Locale.ROOT);
+        return switch (mode) {
+            case "price_asc", "priceasc", "low_to_high" -> Comparator
+                    .comparing(Tour::getBasePrice, Comparator.nullsLast(BigDecimal::compareTo))
+                    .thenComparing(Tour::getId, Comparator.reverseOrder());
+            case "price_desc", "pricedesc", "high_to_low" -> Comparator
+                    .comparing(Tour::getBasePrice, Comparator.nullsLast(BigDecimal::compareTo))
+                    .reversed()
+                    .thenComparing(Tour::getId, Comparator.reverseOrder());
+            case "departure_date", "departure", "departure_date_asc" -> Comparator
+                    .comparing((Tour t) -> earliestDepartureOnOrAfter(t, today), Comparator.nullsLast(LocalDate::compareTo))
+                    .thenComparing(Tour::getId, Comparator.reverseOrder());
+            case "rating_desc", "rating", "review" -> Comparator
+                    .comparingInt((Tour t) -> ratingOrder.getOrDefault(t.getId(), Integer.MAX_VALUE))
+                    .thenComparing(Tour::getId, Comparator.reverseOrder());
+            default -> Comparator.comparing(Tour::getId, Comparator.reverseOrder());
+        };
+    }
 
-        Page<Tour> result =
-                noFilters
-                        ? tourRepository.findByStatus(TourStatus.published, pr)
-                        : tourRepository.findAll(
-                                TourSpecifications.publishedWithFilters(
-                                        keyword,
-                                        minPrice,
-                                        maxPrice,
-                                        minDurationDays,
-                                        maxDurationDays,
-                                        destinationId),
-                                pr);
-        return PageResponse.fromPage(result.map(TourResponse::from));
+    private boolean matchesTourKeyword(Tour tour, String normalizedKeyword) {
+        if (normalizedKeyword == null || normalizedKeyword.isBlank()) {
+            return true;
+        }
+        return normalizeForSearch(tour == null ? null : tour.getDestinationList()).contains(normalizedKeyword);
+    }
+
+    private String normalizeForSearch(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD);
+        return normalized.replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT);
+    }
+
+    private Map<Long, Integer> buildPublishedRatingOrder() {
+        List<Long> ids = tourRepository.findPublishedIdsOrderByAvgRating();
+        Map<Long, Integer> order = new LinkedHashMap<>();
+        for (int i = 0; i < ids.size(); i++) {
+            order.put(ids.get(i), i);
+        }
+        return order;
+    }
+
+    private void enrichRatingStats(List<TourResponse> tours) {
+        if (tours == null || tours.isEmpty()) {
+            return;
+        }
+        List<Long> tourIds = tours.stream().map(TourResponse::getId).filter(Objects::nonNull).distinct().toList();
+        if (tourIds.isEmpty()) {
+            return;
+        }
+        List<Object[]> raw = reviewRepository.aggregateRatingByTourIds(tourIds, ReviewStatus.visible);
+        Map<Long, Double> avgByTour = new HashMap<>();
+        Map<Long, Long> countByTour = new HashMap<>();
+        for (Object[] row : raw) {
+            if (row == null || row.length < 3 || row[0] == null) {
+                continue;
+            }
+            Long tourId = ((Number) row[0]).longValue();
+            Double avg = row[1] == null ? 0d : ((Number) row[1]).doubleValue();
+            Long count = row[2] == null ? 0L : ((Number) row[2]).longValue();
+            avgByTour.put(tourId, avg);
+            countByTour.put(tourId, count);
+        }
+        for (TourResponse tour : tours) {
+            Long id = tour.getId();
+            if (id == null) {
+                tour.setAverageRating(0d);
+                tour.setReviewCount(0L);
+                continue;
+            }
+            tour.setAverageRating(avgByTour.getOrDefault(id, 0d));
+            tour.setReviewCount(countByTour.getOrDefault(id, 0L));
+        }
+    }
+
+    private LocalDate earliestDepartureOnOrAfter(Tour tour, LocalDate threshold) {
+        if (tour == null || tour.getTourDepartures() == null || threshold == null) {
+            return null;
+        }
+        return tour.getTourDepartures().stream()
+                .map(TourDeparture::getDepartureDate)
+                .filter(Objects::nonNull)
+                .filter(d -> !d.isBefore(threshold))
+                .min(LocalDate::compareTo)
+                .orElse(null);
     }
 
     /** Admin: mọi trạng thái. */
@@ -153,7 +250,7 @@ public class TourService {
     public PageResponse<TourResponse> listTours(int page, int size) {
         PageRequest pr = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
         Page<Tour> result = tourRepository.findAll(pr);
-        return PageResponse.fromPage(result.map(TourResponse::from));
+        return PageResponse.fromPage(result.map(this::toResponse));
     }
 
     @Transactional
@@ -172,18 +269,24 @@ public class TourService {
         tour.setName(req.getName().trim());
         tour.setDescription(req.getDescription());
         tour.setDurationDays(req.getDurationDays() != null ? req.getDurationDays() : 1);
-        tour.setDepartureDate(req.getDepartureDate());
+        List<LocalDate> departureDates = normalizeDepartureDates(req.getDepartureDates());
         tour.setBasePrice(req.getBasePrice() != null ? req.getBasePrice() : BigDecimal.ZERO);
         tour.setDestinationList(req.getDestinationList());
+        if (req.getDeparturePoint() != null) {
+            tour.setDeparturePoint(normalizeDeparturePoint(req.getDeparturePoint()));
+        }
         tour.setStatus(req.getStatus() != null ? req.getStatus() : TourStatus.published);
+        validateTourNamePrefix(tour.getName(), tour.getDeparturePoint());
+        validateTourNameDoesNotRepeatDeparture(tour.getName(), tour.getDeparturePoint());
         Tour saved = tourRepository.save(tour);
+        syncDepartures(saved, departureDates);
         if (req.getDestinationIds() != null) {
             syncDestinations(saved, req.getDestinationIds());
         }
         if (req.getItineraries() != null) {
             syncItineraries(saved, req.getItineraries());
         }
-        return TourResponse.from(saved);
+        return getTour(saved.getId());
     }
 
     @Transactional
@@ -194,7 +297,7 @@ public class TourService {
                         .findById(response.getId())
                         .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
         addTourImages(tour, files);
-        return TourResponse.from(tour);
+        return toResponse(tour);
     }
 
     @Transactional
@@ -222,8 +325,9 @@ public class TourService {
         if (req.getDurationDays() != null) {
             tour.setDurationDays(req.getDurationDays());
         }
-        if (req.getDepartureDate() != null) {
-            tour.setDepartureDate(req.getDepartureDate());
+        if (req.getDepartureDates() != null) {
+            List<LocalDate> departureDates = normalizeDepartureDates(req.getDepartureDates());
+            syncDepartures(tour, departureDates);
         }
         if (req.getBasePrice() != null) {
             tour.setBasePrice(req.getBasePrice());
@@ -233,14 +337,19 @@ public class TourService {
         } else if (req.getDestinationList() != null) {
             tour.setDestinationList(req.getDestinationList());
         }
+        if (req.getDeparturePoint() != null) {
+            tour.setDeparturePoint(normalizeDeparturePoint(req.getDeparturePoint()));
+        }
         if (req.getStatus() != null) {
             tour.setStatus(req.getStatus());
         }
+        validateTourNamePrefix(tour.getName(), tour.getDeparturePoint());
+        validateTourNameDoesNotRepeatDeparture(tour.getName(), tour.getDeparturePoint());
         Tour saved = tourRepository.save(tour);
         if (req.getItineraries() != null) {
             syncItineraries(saved, req.getItineraries());
         }
-        return TourResponse.from(saved);
+        return getTour(saved.getId());
     }
 
     @Transactional
@@ -251,7 +360,7 @@ public class TourService {
                         .findById(response.getId())
                         .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
         addTourImages(tour, files);
-        return TourResponse.from(tour);
+        return toResponse(tour);
     }
 
     /** Gỡ tour khỏi catalog: đặt {@link TourStatus#archived}, không xóa bản ghi (giữ FK/lịch sử). */
@@ -327,6 +436,109 @@ public class TourService {
             image.setDisplayOrder(nextDisplayOrder++);
             tourImageRepository.save(image);
         }
+    }
+
+    private String normalizeDeparturePoint(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = raw.trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+        String lowered = value.toLowerCase(Locale.ROOT);
+        if (lowered.equals("ha noi") || lowered.equals("hà nội") || lowered.equals("hn")) {
+            return "Hà Nội";
+        }
+        if (lowered.equals("da nang") || lowered.equals("đà nẵng") || lowered.equals("dn")) {
+            return "Đà Nẵng";
+        }
+        if (lowered.equals("tp hcm")
+                || lowered.equals("tphcm")
+                || lowered.equals("tp.hcm")
+                || lowered.equals("tp ho chi minh")
+                || lowered.equals("tp. ho chi minh")
+                || lowered.equals("tp hồ chí minh")
+                || lowered.equals("hcm")
+                || lowered.equals("sai gon")
+                || lowered.equals("sài gòn")) {
+            return "TP HCM";
+        }
+        return value;
+    }
+
+    private void validateTourNamePrefix(String tourName, String departurePoint) {
+        if (tourName == null || departurePoint == null) {
+            return;
+        }
+        String expected = departurePoint + " - ";
+        if (!tourName.startsWith(expected)) {
+            throw new AppException(
+                    ErrorCode.BAD_REQUEST,
+                    "Tour name must start with departure point: " + expected + "...");
+        }
+    }
+
+    /**
+     * Tên tour dạng "Điểm xuất phát - ... - ..." không được lặp cùng một đoạn trùng {@code
+     * departurePoint} (ví dụ tránh "Đà Nẵng - đà nẵng - hội an").
+     */
+    private void validateTourNameDoesNotRepeatDeparture(String tourName, String departurePoint) {
+        if (tourName == null || departurePoint == null) {
+            return;
+        }
+        String dp = departurePoint.trim();
+        if (dp.length() < 2) {
+            return;
+        }
+        String[] parts = tourName.split("\\s*-\\s*");
+        int sameAsDeparture = 0;
+        for (String part : parts) {
+            if (part == null) {
+                continue;
+            }
+            String t = part.trim();
+            if (t.isEmpty()) {
+                continue;
+            }
+            if (t.equalsIgnoreCase(dp)) {
+                sameAsDeparture++;
+            }
+        }
+        if (sameAsDeparture > 1) {
+            throw new AppException(
+                    ErrorCode.BAD_REQUEST,
+                    "Tour name must list the departure city only once at the start (e.g. Đà Nẵng - hội an, not Đà Nẵng - đà nẵng - hội an)");
+        }
+    }
+
+    private void syncDepartures(Tour tour, List<LocalDate> departureDates) {
+        tourDepartureRepository.deleteByTour_Id(tour.getId());
+        if (departureDates == null || departureDates.isEmpty()) {
+            return;
+        }
+        for (LocalDate departureDate : departureDates) {
+            TourDeparture departure = new TourDeparture();
+            departure.setTour(tour);
+            departure.setDepartureDate(departureDate);
+            tourDepartureRepository.save(departure);
+        }
+    }
+
+    private List<LocalDate> normalizeDepartureDates(List<LocalDate> dates) {
+        if (dates == null) {
+            return List.of();
+        }
+        return dates.stream().filter(Objects::nonNull).distinct().sorted().toList();
+    }
+
+    private TourResponse toResponse(Tour tour) {
+        List<LocalDate> departureDates =
+                tourDepartureRepository.findByTour_IdOrderByDepartureDateAsc(tour.getId()).stream()
+                        .map(TourDeparture::getDepartureDate)
+                        .filter(Objects::nonNull)
+                        .toList();
+        return TourResponse.from(tour, departureDates);
     }
 
     private void syncItineraries(Tour tour, List<TourItineraryRequest> itineraries) {

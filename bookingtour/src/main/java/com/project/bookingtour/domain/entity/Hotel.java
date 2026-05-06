@@ -2,11 +2,15 @@ package com.project.bookingtour.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +40,25 @@ public class Hotel {
     @Column(length = 255)
     private String address;
 
-    @Column
-    private Integer stars;
+    @Column(name = "location", length = 255)
+    private String location;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "base_price", precision = 12, scale = 2)
+    private BigDecimal basePrice;
+
+    @Column(name = "room_capacity")
+    private Integer roomCapacity;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "destination_id", columnDefinition = "BIGINT UNSIGNED")
+    private Destination destination;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_type_id", columnDefinition = "BIGINT UNSIGNED")
+    private HotelType hotelType;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -47,4 +68,10 @@ public class Hotel {
 
     @OneToMany(mappedBy = "hotel")
     private List<TourItineraryHotel> itineraryHotels = new ArrayList<>();
+
+    @OneToMany(mappedBy = "hotel")
+    private List<HotelImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "hotel")
+    private List<HotelReview> reviews = new ArrayList<>();
 }

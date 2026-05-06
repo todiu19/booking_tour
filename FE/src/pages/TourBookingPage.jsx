@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 
 function formatPrice(value) {
@@ -13,15 +13,19 @@ function formatDate(value) {
 
 export default function TourBookingPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const initialAdultCount = Math.max(Number(searchParams.get('adultCount') || 1), 1)
+  const initialChildCount = Math.max(Number(searchParams.get('childCount') || 0), 0)
+  const initialPaymentMethod = searchParams.get('paymentMethod') === 'vnpay' ? 'vnpay' : 'cod'
   const [tour, setTour] = useState(null)
   const [bookingForm, setBookingForm] = useState({
     contactName: '',
     contactPhone: '',
     contactEmail: '',
-    adultCount: 1,
-    childCount: 0,
+    adultCount: initialAdultCount,
+    childCount: initialChildCount,
     note: '',
-    provider: 'cod',
+    provider: initialPaymentMethod,
   })
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -98,6 +102,7 @@ export default function TourBookingPage() {
   if (loading) return <p>Loading booking form...</p>
   if (error && !tour) return <p className="error">{error}</p>
   if (!tour) return <p>Tour not found.</p>
+  const firstDepartureDate = Array.isArray(tour.departureDates) && tour.departureDates.length > 0 ? tour.departureDates[0] : null
 
   return (
     <section className="stack">
@@ -188,7 +193,7 @@ export default function TourBookingPage() {
             <p>
               <strong>{tour.name}</strong>
             </p>
-            <p>Ngay khoi hanh: {formatDate(tour.departureDate)}</p>
+            <p>Ngay khoi hanh: {formatDate(firstDepartureDate)}</p>
             <p>Duration: {tour.durationDays} days</p>
             <p>{tour.description || 'No description.'}</p>
           </article>

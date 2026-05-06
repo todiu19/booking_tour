@@ -15,9 +15,10 @@ export default function AdminToursPage() {
     name: '',
     description: '',
     durationDays: 1,
-    departureDate: '',
+    departureDatesText: '',
     basePrice: 0,
     destinationList: '',
+    departurePoint: '',
     status: 'published',
   })
 
@@ -43,10 +44,18 @@ export default function AdminToursPage() {
     e.preventDefault()
     try {
       const payload = {
-        ...form,
+        code: form.code,
+        name: form.name,
+        description: form.description,
         durationDays: Number(form.durationDays),
         basePrice: Number(form.basePrice),
-        departureDate: form.departureDate || null,
+        destinationList: form.destinationList,
+        departurePoint: form.departurePoint.trim() || undefined,
+        status: form.status,
+        departureDates: form.departureDatesText
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
         destinationIds: [],
       }
       if (editId) {
@@ -79,9 +88,10 @@ export default function AdminToursPage() {
       name: tour.name || '',
       description: tour.description || '',
       durationDays: tour.durationDays || 1,
-      departureDate: tour.departureDate || '',
+      departureDatesText: (tour.departureDates || []).join(', '),
       basePrice: tour.basePrice || 0,
       destinationList: tour.destinationList || '',
+      departurePoint: tour.departurePoint || '',
       status: tour.status || 'published',
     })
   }
@@ -130,7 +140,7 @@ export default function AdminToursPage() {
               required
             />
             <input
-              placeholder="Name"
+              placeholder="Ví dụ: Hà Nội - hạ long - hải phòng (điểm xuất phát: Hà Nội / Đà Nẵng / TP HCM)"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               required
@@ -151,9 +161,9 @@ export default function AdminToursPage() {
               required
             />
             <input
-              type="date"
-              value={form.departureDate}
-              onChange={(e) => setForm((p) => ({ ...p, departureDate: e.target.value }))}
+              placeholder="Departure dates (YYYY-MM-DD, comma separated)"
+              value={form.departureDatesText}
+              onChange={(e) => setForm((p) => ({ ...p, departureDatesText: e.target.value }))}
             />
             <input
               type="number"
@@ -171,6 +181,11 @@ export default function AdminToursPage() {
               <option value="archived">archived</option>
             </select>
           </div>
+          <input
+            placeholder="Diem xuat phat (Ha Noi, Da Nang, TP HCM)"
+            value={form.departurePoint}
+            onChange={(e) => setForm((p) => ({ ...p, departurePoint: e.target.value }))}
+          />
           <input
             placeholder="Destination list text (json/string)"
             value={form.destinationList}
@@ -191,9 +206,10 @@ export default function AdminToursPage() {
                     name: '',
                     description: '',
                     durationDays: 1,
-                    departureDate: '',
+                    departureDatesText: '',
                     basePrice: 0,
                     destinationList: '',
+                    departurePoint: '',
                     status: 'published',
                   })
                 }}

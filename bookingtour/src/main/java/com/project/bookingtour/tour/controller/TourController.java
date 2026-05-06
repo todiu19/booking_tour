@@ -2,10 +2,10 @@ package com.project.bookingtour.tour.controller;
 
 
 import com.project.bookingtour.common.dto.ApiResponse;
-import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.dto.response.TourResponse;
 import com.project.bookingtour.tour.service.TourService;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,29 +22,29 @@ public class TourController {
 
     /**
      * Danh sách / tìm kiếm tour công khai (published). Không gửi tham số lọc → trả về toàn bộ
-     * tour đã xuất bản (phân trang). Có tham số → lọc theo tiêu chí tương ứng.
+     * tour đã xuất bản. Có tham số → lọc theo tiêu chí tương ứng.
      */
     @GetMapping
-    public ApiResponse<PageResponse<TourResponse>> listPublished(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+    public ApiResponse<List<TourResponse>> listPublished(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Integer minDurationDays,
             @RequestParam(required = false) Integer maxDurationDays,
-            @RequestParam(required = false) Long destinationId) {
-        ApiResponse<PageResponse<TourResponse>> res = new ApiResponse<>();
+            @RequestParam(required = false) Long destinationId,
+            @RequestParam(required = false) String departurePoint,
+            @RequestParam(required = false) String sortBy) {
+        ApiResponse<List<TourResponse>> res = new ApiResponse<>();
         res.setData(
                 tourService.listPublishedTours(
-                        page,
-                        size,
                         keyword,
                         minPrice,
                         maxPrice,
                         minDurationDays,
                         maxDurationDays,
-                        destinationId));
+                        destinationId,
+                        departurePoint,
+                        sortBy));
         return res;
     }
 
