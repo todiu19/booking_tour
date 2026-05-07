@@ -1,6 +1,7 @@
 package com.project.bookingtour.hotel.service;
 
 import com.project.bookingtour.common.dto.response.HotelResponse;
+import com.project.bookingtour.common.enums.HotelStatus;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.domain.entity.Hotel;
@@ -53,8 +54,8 @@ public class HotelService {
         String normalizedHotelType = normalize(hotelType);
         List<Hotel> source =
                 destinationId == null
-                        ? hotelRepository.findAll(Sort.by(Sort.Direction.DESC, "id"))
-                        : hotelRepository.findAllByDestination_Id(destinationId);
+                        ? hotelRepository.findAllByStatus(HotelStatus.active)
+                        : hotelRepository.findAllByDestination_IdAndStatus(destinationId, HotelStatus.active);
         List<HotelResponse> hotels =
                 source.stream()
                         .map(HotelResponse::from)
@@ -79,7 +80,7 @@ public class HotelService {
     public HotelResponse getHotel(Long id) {
         Hotel hotel =
                 hotelRepository
-                        .findById(id)
+                        .findByIdAndStatus(id, HotelStatus.active)
                         .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Hotel not found"));
         return HotelResponse.from(hotel);
     }

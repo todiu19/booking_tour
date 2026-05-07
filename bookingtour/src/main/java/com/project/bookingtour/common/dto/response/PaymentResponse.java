@@ -12,6 +12,7 @@ public class PaymentResponse {
 
     private Long id;
     private Long bookingId;
+    private Long hotelBookingId;
     private PaymentProvider provider;
     private String transactionRef;
     private BigDecimal amount;
@@ -27,6 +28,7 @@ public class PaymentResponse {
         PaymentResponse r = new PaymentResponse();
         r.setId(p.getId());
         r.setBookingId(p.getBooking() != null ? p.getBooking().getId() : null);
+        r.setHotelBookingId(p.getHotelBooking() != null ? p.getHotelBooking().getId() : null);
         r.setProvider(p.getProvider());
         r.setTransactionRef(p.getTransactionRef());
         r.setAmount(p.getAmount());

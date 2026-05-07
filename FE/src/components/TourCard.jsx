@@ -3,12 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 
 function formatPrice(value) {
-  if (value == null) return 'N/A'
+  if (value == null) return 'Chưa có'
   return Number(value).toLocaleString('vi-VN') + ' đ'
 }
 
 function formatDestinationTag(raw) {
-  if (!raw) return 'Viet Nam'
+  if (!raw) return 'Việt Nam'
   const text = String(raw).trim()
   try {
     const parsed = JSON.parse(text)
@@ -26,7 +26,7 @@ function formatDestinationTag(raw) {
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
-    .join(' / ') || 'Viet Nam'
+    .join(' / ') || 'Việt Nam'
 }
 
 /** Điểm khởi hành = tên đầu tiên trong destinationList (JSON hoặc chuỗi danh sách). */
@@ -57,7 +57,7 @@ function getCampaignTag(tour) {
     .map((item) => String(item || '').trim())
     .filter(Boolean)
   if (candidates.length > 0) return candidates[0]
-  return 'Gia Tot'
+  return 'Giá tốt'
 }
 
 export default function TourCard({ tour }) {
@@ -102,7 +102,7 @@ export default function TourCard({ tour }) {
     Array.isArray(tour.departureDates) && tour.departureDates.length > 0 ? tour.departureDates[0] : null
   const departureLabel = firstDepartureDate
     ? new Date(firstDepartureDate).toLocaleDateString('vi-VN')
-    : 'Linh hoat'
+    : 'Linh hoạt'
   const comparePrice = tour.comparePrice || tour.originalPrice || null
   const khoiHanhDiaDiem =
     (tour.departurePoint && String(tour.departurePoint).trim()) ||
@@ -127,7 +127,7 @@ export default function TourCard({ tour }) {
       {tour.thumbnailUrl ? (
         <img src={tour.thumbnailUrl} alt={tour.name} className="card-image" />
       ) : (
-        <div className="card-image card-image-fallback">No image</div>
+        <div className="card-image card-image-fallback">Không có ảnh</div>
       )}
       <div className="card-body">
         <p className="tour-rating">
@@ -135,22 +135,22 @@ export default function TourCard({ tour }) {
           <span className="tour-rating-label">
             {ratingInfo.count > 0 ? (
               <>
-                <span className="tour-rating-best">Tuyet voi</span> | {ratingInfo.count} danh gia
+                <span className="tour-rating-best">Tuyệt vời</span> | {ratingInfo.count} đánh giá
               </>
             ) : (
-              'Chua co danh gia'
+              'Chưa có đánh giá'
             )}
           </span>
         </p>
         <h3 className="travel-card-title">{tour.name}</h3>
         <p className="travel-card-meta">
-          <span>{tour.durationDays || 1} ngay</span>
+          <span>{tour.durationDays || 1} ngày</span>
           <span
             className="travel-card-departure-point"
             data-departure-point={khoiHanhDiaDiem}
             title="Điểm xuất phát (departure_point)"
           >
-            Khoi hanh {khoiHanhDiaDiem}
+            Khởi hành {khoiHanhDiaDiem}
           </span>
         </p>
         <div className="travel-card-tags">
@@ -164,14 +164,14 @@ export default function TourCard({ tour }) {
         <div className="travel-price-wrap">
           {comparePrice ? <span className="travel-price-old">{formatPrice(comparePrice)}</span> : null}
           <p className="travel-price">{formatPrice(tour.basePrice)}</p>
-          <p className="travel-departure-note">Khoi hanh ngay {departureLabel}</p>
+          <p className="travel-departure-note">Khởi hành ngày {departureLabel}</p>
         </div>
         <Link
           className="button travel-card-button"
           to={`/tours/${tour.id}`}
           onClick={(e) => e.stopPropagation()}
         >
-          Xem chi tiet
+          Xem chi tiết
         </Link>
       </div>
     </article>

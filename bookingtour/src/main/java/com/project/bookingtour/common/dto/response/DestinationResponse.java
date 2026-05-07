@@ -11,6 +11,7 @@ public class DestinationResponse {
     private String province;
     private String country;
     private String imageUrl;
+    private String description;
 
     public static DestinationResponse from(Destination d) {
         if (d == null) {
@@ -22,6 +23,7 @@ public class DestinationResponse {
         r.setProvince(d.getProvince());
         r.setCountry(d.getCountry());
         r.setImageUrl(d.getImageUrl());
+        r.setDescription(d.getDescription());
         return r;
     }
 }

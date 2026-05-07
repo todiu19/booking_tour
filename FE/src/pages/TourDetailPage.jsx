@@ -3,11 +3,11 @@ import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 
 function formatPrice(value) {
-  if (value == null) return 'N/A'
+  if (value == null) return 'Chưa có'
   return Number(value).toLocaleString('vi-VN') + ' VND'
 }
 function formatDate(value) {
-  if (!value) return 'N/A'
+  if (!value) return 'Chưa có'
   return new Date(value).toLocaleDateString('vi-VN')
 }
 
@@ -71,7 +71,7 @@ export default function TourDetailPage() {
       .slice(0, 5)
     if (summaryFromItinerary.length > 0) return summaryFromItinerary
     if (tourData.description) return [tourData.description]
-    return ['Chua co thong tin noi bat cho tour nay.']
+    return ['Chưa có thông tin nổi bật cho tour này.']
   }, [itineraryItems, tourData.description])
   const hotelStops = useMemo(() => {
     const map = new Map()
@@ -83,7 +83,7 @@ export default function TourDetailPage() {
         if (!map.has(key)) {
           map.set(key, {
             id: key,
-            name: hotel.name || 'Khach san',
+            name: hotel.name || 'Khách sạn',
             address: hotel.address || '',
             description: hotel.description || '',
             location: hotel.location || '',
@@ -139,7 +139,7 @@ export default function TourDetailPage() {
 
       const me = await api.getMe()
       if (!me) {
-        throw new Error('Vui long dang nhap de dat tour')
+        throw new Error('Vui lòng đăng nhập để đặt tour')
       }
 
       const response = await api.createBooking({
@@ -157,9 +157,9 @@ export default function TourDetailPage() {
         return
       }
 
-      setBookingSuccess(`Dat tour thanh cong. Ma booking: ${response?.booking?.bookingCode || ''}`)
+      setBookingSuccess(`Đặt tour thành công. Mã đơn: ${response?.booking?.bookingCode || ''}`)
     } catch (e) {
-      const message = e?.message || 'Dat tour that bai'
+      const message = e?.message || 'Đặt tour thất bại'
       setBookingError(message)
       if (e?.status === 401) {
         window.dispatchEvent(new CustomEvent('app:auth-required'))
@@ -181,9 +181,9 @@ export default function TourDetailPage() {
     })
   }
 
-  if (loading) return <p>Loading tour detail...</p>
+  if (loading) return <p>Đang tải chi tiết tour...</p>
   if (error) return <p className="error">{error}</p>
-  if (!tour) return <p>Tour not found.</p>
+  if (!tour) return <p>Không tìm thấy tour.</p>
 
   return (
     <section className="tour-detail-layout">
@@ -193,11 +193,11 @@ export default function TourDetailPage() {
           <div className="tour-head-meta">
             <span className="tour-score-badge">{reviewAvg > 0 ? reviewAvg.toFixed(1) : '9.0'}</span>
             <span className="tour-score-text">
-              {reviews.length > 0 ? `Tuyet voi ${reviews.length} danh gia` : 'Tuyet voi 0 danh gia'}
+              {reviews.length > 0 ? `Tuyệt vời ${reviews.length} đánh giá` : 'Tuyệt vời 0 đánh giá'}
             </span>
-            <span className="muted">Khoi hanh: {tourData.departurePoint || '—'}</span>
-            <span className="muted">Ngay di: {formatDate(selectedDepartureDate)}</span>
-            <span className="muted">Ma tour: {tourData.code || `T${String(tourData.id || id).padStart(5, '0')}`}</span>
+            <span className="muted">Khởi hành: {tourData.departurePoint || '—'}</span>
+            <span className="muted">Ngày đi: {formatDate(selectedDepartureDate)}</span>
+            <span className="muted">Mã tour: {tourData.code || `T${String(tourData.id || id).padStart(5, '0')}`}</span>
           </div>
         </div>
 
@@ -205,7 +205,7 @@ export default function TourDetailPage() {
           {primaryImage ? (
             <img src={primaryImage} className="tour-gallery-main" alt={tourData.name} />
           ) : (
-            <div className="tour-gallery-main card-image-fallback">No image</div>
+            <div className="tour-gallery-main card-image-fallback">Không có ảnh</div>
           )}
           <div className="tour-gallery-side">
             {sideImages.length > 0
@@ -214,7 +214,7 @@ export default function TourDetailPage() {
                 ))
               : Array.from({ length: 4 }).map((_, idx) => (
                   <div key={idx} className="tour-gallery-side-item card-image-fallback">
-                    No image
+                    Không có ảnh
                   </div>
                 ))}
           </div>
@@ -224,7 +224,7 @@ export default function TourDetailPage() {
       <div className="tour-detail-bottom">
         <div className="tour-detail-main stack">
           <section className="panel stack">
-            <h2>Diem Noi Bat Tour</h2>
+            <h2>Điểm nổi bật tour</h2>
             <div className="tour-highlight-list">
               {highlightItems.map((item, idx) => (
                 <p key={`${idx}-${item}`} className="tour-highlight-item">
@@ -236,11 +236,11 @@ export default function TourDetailPage() {
 
           <section className="panel stack">
             <div className="tour-program-head">
-              <h2>Chuong trinh tour</h2>
-              <span className="muted">{tourData.durationDays || itineraryItems.length || 0} ngay</span>
+              <h2>Chương trình tour</h2>
+              <span className="muted">{tourData.durationDays || itineraryItems.length || 0} ngày</span>
             </div>
             {itineraryItems.length === 0 ? (
-              <p className="muted">Chua co lich trinh chi tiet.</p>
+              <p className="muted">Chưa có lịch trình chi tiết.</p>
             ) : (
               <div className="tour-program-list">
                 {itineraryItems.map((item, idx) => (
@@ -256,10 +256,10 @@ export default function TourDetailPage() {
                             aria-expanded={expanded}
                             onClick={() => toggleProgramItem(itemKey)}
                           >
-                            <strong>Ngay {item.dayNumber || idx + 1}</strong>
-                            <span>{item.title || 'Hoat dong trong ngay'}</span>
+                            <strong>Ngày {item.dayNumber || idx + 1}</strong>
+                            <span>{item.title || 'Hoạt động trong ngày'}</span>
                           </button>
-                          {expanded ? <p>{item.description || 'Khong co mo ta.'}</p> : null}
+                          {expanded ? <p>{item.description || 'Không có mô tả.'}</p> : null}
                         </>
                       )
                     })()}
@@ -270,9 +270,9 @@ export default function TourDetailPage() {
           </section>
 
           <section className="panel stack">
-            <h2>Khach san trong tour</h2>
+            <h2>Khách sạn trong tour</h2>
             {hotelStops.length === 0 ? (
-              <p className="muted">Chua co thong tin khach san.</p>
+              <p className="muted">Chưa có thông tin khách sạn.</p>
             ) : (
               <div className="tour-hotel-list">
                 {hotelStops.map((hotel) => (
@@ -281,7 +281,7 @@ export default function TourDetailPage() {
                     className="hotel-row-card-link"
                     to={`/hotels/${hotel.id}`}
                     state={{ hotel }}
-                    aria-label={`Chi tiet ${hotel.name}`}
+                    aria-label={`Chi tiết ${hotel.name}`}
                   >
                     <article className="hotel-row-card">
                       <div className="hotel-row-thumb-wrap">
@@ -296,14 +296,14 @@ export default function TourDetailPage() {
                       <div className="hotel-row-content">
                         <h3 className="hotel-row-title">{hotel.name}</h3>
                         <p className="hotel-row-meta">
-                          {hotel.averageRating > 0 ? `${hotel.averageRating.toFixed(1)} diem` : 'Chua co danh gia'}
+                          {hotel.averageRating > 0 ? `${hotel.averageRating.toFixed(1)} điểm` : 'Chưa có đánh giá'}
                           {hotel.reviewCount > 0 ? ` · ${hotel.reviewCount} review` : ''}
-                          {hotel.nightCount > 0 ? ` · ${hotel.nightCount} dem` : ''}
+                          {hotel.nightCount > 0 ? ` · ${hotel.nightCount} đêm` : ''}
                         </p>
                         {hotel.address ? <p className="hotel-row-address">{hotel.address}</p> : null}
                       </div>
                       <div className="hotel-row-cta-col">
-                        <span className="hotel-row-cta">Xem chi tiet</span>
+                          <span className="hotel-row-cta">Xem chi tiết</span>
                       </div>
                     </article>
                   </Link>
@@ -313,21 +313,21 @@ export default function TourDetailPage() {
           </section>
 
           <section className="panel stack">
-            <h2>Review tu khach hang</h2>
+            <h2>Đánh giá từ khách hàng</h2>
             {reviews.length === 0 ? (
-              <p className="muted">Chua co review cho tour nay.</p>
+              <p className="muted">Chưa có đánh giá cho tour này.</p>
             ) : (
               <div className="review-list">
                 {reviews.map((review) => (
                   <article key={review.id} className="review-item">
                     <div className="review-head">
-                      <strong>{review.reviewerName || 'Nguoi dung'}</strong>
+                      <strong>{review.reviewerName || 'Người dùng'}</strong>
                       <span className="tour-rating">★ {Number(review.rating || 0).toFixed(1)}</span>
                     </div>
                     <p className="muted">
                       {review.createdAt ? new Date(review.createdAt).toLocaleString('vi-VN') : ''}
                     </p>
-                    <p>{review.comment || 'Khong co noi dung.'}</p>
+                    <p>{review.comment || 'Không có nội dung.'}</p>
                   </article>
                 ))}
               </div>
@@ -336,10 +336,10 @@ export default function TourDetailPage() {
         </div>
 
         <aside className="tour-booking-sidebar panel">
-        <h2>Lich Trinh va Gia Tour</h2>
-        <p className="muted">Chon lich trinh va xem gia:</p>
+        <h2>Lịch trình và giá tour</h2>
+        <p className="muted">Chọn lịch trình và xem giá:</p>
         {dateOptions.length === 0 ? (
-          <p className="muted">Tour nay chua co ngay khoi hanh.</p>
+          <p className="muted">Tour này chưa có ngày khởi hành.</p>
         ) : (
           <div className="tour-date-pills">
             {dateOptions.map((item) => (
@@ -359,8 +359,8 @@ export default function TourDetailPage() {
         <div className="tour-counter-list">
           <div className="tour-counter-row">
             <div>
-              <strong>Nguoi lon</strong>
-              <p className="muted">&gt; 10 tuoi</p>
+              <strong>Người lớn</strong>
+              <p className="muted">&gt; 10 tuổi</p>
             </div>
             <div className="tour-counter-control">
               <button type="button" onClick={() => updateCounter(setAdultCount, -1, 1)}>
@@ -374,8 +374,8 @@ export default function TourDetailPage() {
           </div>
           <div className="tour-counter-row">
             <div>
-              <strong>Tre em</strong>
-              <p className="muted">5 - 10 tuoi</p>
+              <strong>Trẻ em</strong>
+              <p className="muted">5 - 10 tuổi</p>
             </div>
             <div className="tour-counter-control">
               <button type="button" onClick={() => updateCounter(setChildCount, -1)}>
@@ -389,8 +389,8 @@ export default function TourDetailPage() {
           </div>
           <div className="tour-counter-row">
             <div>
-              <strong>Tre nho</strong>
-              <p className="muted">&lt; 5 tuoi</p>
+              <strong>Trẻ nhỏ</strong>
+              <p className="muted">&lt; 5 tuổi</p>
             </div>
             <div className="tour-counter-control">
               <button type="button" onClick={() => updateCounter(setKidCount, -1)}>
@@ -405,7 +405,7 @@ export default function TourDetailPage() {
         </div>
 
         <div className="tour-payment-method">
-          <p className="tour-payment-method-label">Phuong thuc thanh toan</p>
+          <p className="tour-payment-method-label">Phương thức thanh toán</p>
           <div className="tour-payment-method-options">
             <label>
               <input
@@ -415,7 +415,7 @@ export default function TourDetailPage() {
                 checked={paymentMethod === 'cod'}
                 onChange={() => setPaymentMethod('cod')}
               />
-              Truc tiep
+              Trực tiếp
             </label>
             <label>
               <input
@@ -430,13 +430,13 @@ export default function TourDetailPage() {
           </div>
         </div>
 
-        <p className="tour-booking-note">Lien he de xac nhan cho</p>
+        <p className="tour-booking-note">Liên hệ để xác nhận chỗ</p>
         <div className="tour-total-row">
-          <span>Tong Gia Tour ({chargeablePax} khach tinh phi)</span>
+          <span>Tổng giá tour ({chargeablePax} khách tính phí)</span>
           <strong>{formatPrice(totalPrice)}</strong>
         </div>
         <button type="button" className="button tour-booking-button" onClick={submitTourBooking} disabled={bookingSubmitting}>
-          {bookingSubmitting ? 'Dang xu ly...' : 'Yeu cau dat'}
+          {bookingSubmitting ? 'Đang xử lý...' : 'Yêu cầu đặt'}
         </button>
         {bookingError ? <p className="error">{bookingError}</p> : null}
         {bookingSuccess ? <p className="success">{bookingSuccess}</p> : null}

@@ -28,10 +28,12 @@ import com.project.bookingtour.domain.repository.TourItineraryRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
 import com.project.bookingtour.domain.repository.TourDestinationRepository;
 import com.project.bookingtour.domain.repository.TourSpecifications;
-import com.project.bookingtour.storage.StorageService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -48,7 +50,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -62,7 +63,7 @@ public class TourService {
     private final TourItineraryRepository tourItineraryRepository;
     private final HotelRepository hotelRepository;
     private final ReviewRepository reviewRepository;
-    private final StorageService storageService;
+    private final ObjectMapper objectMapper;
 
     public List<TourResponse> getPublishedLatest(int limit) {
         return tourRepository
@@ -271,7 +272,7 @@ public class TourService {
         tour.setDurationDays(req.getDurationDays() != null ? req.getDurationDays() : 1);
         List<LocalDate> departureDates = normalizeDepartureDates(req.getDepartureDates());
         tour.setBasePrice(req.getBasePrice() != null ? req.getBasePrice() : BigDecimal.ZERO);
-        tour.setDestinationList(req.getDestinationList());
+        tour.setDestinationList(normalizeDestinationListJson(req.getDestinationList()));
         if (req.getDeparturePoint() != null) {
             tour.setDeparturePoint(normalizeDeparturePoint(req.getDeparturePoint()));
         }
@@ -286,18 +287,8 @@ public class TourService {
         if (req.getItineraries() != null) {
             syncItineraries(saved, req.getItineraries());
         }
+        addTourImageUrls(saved, req.getImageUrls());
         return getTour(saved.getId());
-    }
-
-    @Transactional
-    public TourResponse createTour(TourCreateRequest req, List<MultipartFile> files) {
-        TourResponse response = createTour(req);
-        Tour tour =
-                tourRepository
-                        .findById(response.getId())
-                        .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
-        addTourImages(tour, files);
-        return toResponse(tour);
     }
 
     @Transactional
@@ -335,7 +326,7 @@ public class TourService {
         if (req.getDestinationIds() != null) {
             syncDestinations(tour, req.getDestinationIds());
         } else if (req.getDestinationList() != null) {
-            tour.setDestinationList(req.getDestinationList());
+            syncDestinations(tour, req.getDestinationList());
         }
         if (req.getDeparturePoint() != null) {
             tour.setDeparturePoint(normalizeDeparturePoint(req.getDeparturePoint()));
@@ -349,18 +340,8 @@ public class TourService {
         if (req.getItineraries() != null) {
             syncItineraries(saved, req.getItineraries());
         }
+        addTourImageUrls(saved, req.getImageUrls());
         return getTour(saved.getId());
-    }
-
-    @Transactional
-    public TourResponse updateTour(Long id, TourUpdateRequest req, List<MultipartFile> files) {
-        TourResponse response = updateTour(id, req);
-        Tour tour =
-                tourRepository
-                        .findById(response.getId())
-                        .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
-        addTourImages(tour, files);
-        return toResponse(tour);
     }
 
     /** Gỡ tour khỏi catalog: đặt {@link TourStatus#archived}, không xóa bản ghi (giữ FK/lịch sử). */
@@ -371,6 +352,16 @@ public class TourService {
                         .findById(id)
                         .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
         tour.setStatus(TourStatus.archived);
+        tourRepository.save(tour);
+    }
+
+    @Transactional
+    public void publishTour(Long id) {
+        Tour tour =
+                tourRepository
+                        .findById(id)
+                        .orElseThrow(() -> new AppException(ErrorCode.TOUR_NOT_FOUND));
+        tour.setStatus(TourStatus.published);
         tourRepository.save(tour);
     }
 
@@ -407,17 +398,41 @@ public class TourService {
             tourDestinationRepository.save(td);
         }
 
-        String destinationList =
+        List<String> destinationNames =
                 cleanedIds.stream()
                         .map(byId::get)
                         .filter(Objects::nonNull)
                         .map(Destination::getName)
-                        .collect(Collectors.joining(", "));
-        tour.setDestinationList(destinationList);
+                        .toList();
+        tour.setDestinationList(toJsonArray(destinationNames));
     }
 
-    private void addTourImages(Tour tour, List<MultipartFile> files) {
-        if (files == null || files.isEmpty()) {
+    private String normalizeDestinationListJson(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("[")) {
+            return trimmed;
+        }
+        List<String> names =
+                Arrays.stream(trimmed.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+        return toJsonArray(names);
+    }
+
+    private String toJsonArray(List<String> values) {
+        try {
+            return objectMapper.writeValueAsString(values == null ? List.of() : values);
+        } catch (JsonProcessingException e) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Invalid destination list format");
+        }
+    }
+
+    private void addTourImageUrls(Tour tour, List<String> imageUrls) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
             return;
         }
         List<TourImage> existing = tourImageRepository.findByTour_IdOrderByDisplayOrderAsc(tour.getId());
@@ -425,14 +440,14 @@ public class TourService {
                 existing.isEmpty()
                         ? 1
                         : existing.get(existing.size() - 1).getDisplayOrder() + 1;
-        for (MultipartFile file : files) {
-            if (file == null || file.isEmpty()) {
+        for (String raw : imageUrls) {
+            String url = raw == null ? "" : raw.trim();
+            if (url.isEmpty()) {
                 continue;
             }
-            String imageUrl = storageService.storeTourImage(file);
             TourImage image = new TourImage();
             image.setTour(tour);
-            image.setImageUrl(imageUrl);
+            image.setImageUrl(url);
             image.setDisplayOrder(nextDisplayOrder++);
             tourImageRepository.save(image);
         }

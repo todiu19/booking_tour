@@ -169,7 +169,7 @@ export default function HomePage() {
     }
   }, [])
 
-  if (loading) return <p>Dang tai du lieu trang chu...</p>
+  if (loading) return <p>Đang tải dữ liệu trang chủ...</p>
   if (error) return <p className="error">{error}</p>
 
   const bannerTour = pickHomeBannerTour(data)
@@ -246,7 +246,7 @@ export default function HomePage() {
                           </svg>
                         </span>
                         <label htmlFor="search-home-text" className="tour-home-visually-hidden">
-                          Tim dia diem
+                          Tìm điểm đến
                         </label>
                         <input
                           id="search-home-text"
@@ -313,7 +313,7 @@ export default function HomePage() {
                           <div
                             className="tour-home-date-popover"
                             role="dialog"
-                            aria-label="Chon ngay khoi hanh"
+                            aria-label="Chọn ngày khởi hành"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="tour-home-date-popover-arrow" aria-hidden />
@@ -321,7 +321,7 @@ export default function HomePage() {
                               <button
                                 type="button"
                                 className="tour-home-date-nav"
-                                aria-label="Thang truoc"
+                                aria-label="Tháng trước"
                                 onClick={() =>
                                   setDepartureView(new Date(calYear, calMonth - 1, 1))
                                 }
@@ -345,7 +345,7 @@ export default function HomePage() {
                                 </select>
                                 <select
                                   className="tour-home-date-select"
-                                  aria-label="Nam"
+                                  aria-label="Năm"
                                   value={calYear}
                                   onChange={(e) =>
                                     setDepartureView(new Date(Number(e.target.value), calMonth, 1))
@@ -361,7 +361,7 @@ export default function HomePage() {
                               <button
                                 type="button"
                                 className="tour-home-date-nav"
-                                aria-label="Thang sau"
+                                aria-label="Tháng sau"
                                 onClick={() =>
                                   setDepartureView(new Date(calYear, calMonth + 1, 1))
                                 }
@@ -436,7 +436,7 @@ export default function HomePage() {
                           }`}
                           aria-expanded={originOpen}
                           aria-haspopup="listbox"
-                          aria-label="Khoi hanh tu"
+                            aria-label="Khởi hành từ"
                           onClick={(e) => {
                             e.stopPropagation()
                             setDepartureOpen(false)
@@ -462,7 +462,7 @@ export default function HomePage() {
                           <ul
                             className="tour-home-origin-list"
                             role="listbox"
-                            aria-label="Danh sach diem khoi hanh"
+                            aria-label="Danh sách điểm khởi hành"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {HOME_ORIGIN_OPTIONS.map((opt) => (
@@ -507,8 +507,8 @@ export default function HomePage() {
                   </>
                 ) : (
                   <>
-                    <h2 className="tour-home-promo-title">Tour Nhat Ban 5N4D</h2>
-                    <p className="tour-home-promo-route">Tour Nhat Ban 5N4D</p>
+                    <h2 className="tour-home-promo-title">Tour Nhật Bản 5N4Đ</h2>
+                    <p className="tour-home-promo-route">Tour Nhật Bản 5N4Đ</p>
                     <p className="tour-home-promo-price">
                       Giá chỉ từ <strong>21.499.000đ</strong>
                       /khách
@@ -544,7 +544,7 @@ export default function HomePage() {
         footer={
           <div className="destination-more-wrap">
             <Link to="/tours" className="destination-more-link">
-              Xem them ›
+              Xem thêm <i className="fa-solid fa-angle-right" aria-hidden="true" />
             </Link>
           </div>
         }
@@ -559,7 +559,7 @@ export default function HomePage() {
       <div className="home-offer-container">
         <HorizontalList
           title="Tour mới nhất"
-          subtitle="Nhanh tay dat ngay. De mai se lo"
+          subtitle="Nhanh tay đặt ngay. Để mai sẽ lỡ."
           showArrows={false}
           listClassName="home-tour-grid"
         >
@@ -576,8 +576,8 @@ export default function HomePage() {
         aria-labelledby="popular-dest-heading"
       >
         <div className="popular-tour-block-head">
-          <h2 id="popular-dest-heading">Cac diem du lich pho bien</h2>
-          <p className="popular-tour-block-subtitle">Bao la the gioi, bon be la nha</p>
+          <h2 id="popular-dest-heading">Các điểm du lịch phổ biến</h2>
+          <p className="popular-tour-block-subtitle">Bao la thế giới, bốn bề là nhà</p>
         </div>
         {popularDestinations.length > 0 ? (
           <div className="popular-dest-grid" role="list">
@@ -589,7 +589,7 @@ export default function HomePage() {
                 className={
                   index === 0 ? 'popular-dest-card popular-dest-card--featured' : 'popular-dest-card'
                 }
-                aria-label={`Diem den: ${destination.name}`}
+                aria-label={`Điểm đến: ${destination.name}`}
               >
                 {destination.imageUrl ? (
                   <img
@@ -609,8 +609,13 @@ export default function HomePage() {
             ))}
           </div>
         ) : (
-          <p className="popular-dest-empty muted">Chua co diem den de hien thi.</p>
+          <p className="popular-dest-empty muted">Chưa có điểm đến để hiển thị.</p>
         )}
+        <div className="popular-dest-more">
+          <Link to="/destinations" className="destination-more-link">
+            Xem thêm <i className="fa-solid fa-angle-right" aria-hidden="true" />
+          </Link>
+        </div>
       </section>
     </section>
   )

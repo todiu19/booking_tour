@@ -11,4 +11,6 @@ public interface TourDepartureRepository extends JpaRepository<TourDeparture, Lo
     void deleteByTour_Id(Long tourId);
 
     List<TourDeparture> findByTour_IdOrderByDepartureDateAsc(Long tourId);
+
+    List<TourDeparture> findByTour_IdInOrderByDepartureDateAsc(java.util.Collection<Long> tourIds);
 }

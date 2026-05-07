@@ -19,6 +19,7 @@ public class TourCreateRequest {
     /** Điểm xuất phát (VD: Ha Noi, TP. Ho Chi Minh, Da Nang). */
     private String departurePoint;
     private List<Long> destinationIds;
+    private List<String> imageUrls;
     private List<TourItineraryRequest> itineraries;
     private TourStatus status;
 }

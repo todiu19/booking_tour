@@ -76,6 +76,7 @@ public class DestinationService {
         d.setProvince(province);
         d.setCountry(country);
         d.setImageUrl(normalizeOptional(req.getImageUrl()));
+        d.setDescription(normalizeOptional(req.getDescription()));
         return DestinationResponse.from(destinationRepository.save(d));
     }
 
@@ -109,6 +110,9 @@ public class DestinationService {
         d.setCountry(country);
         if (req.getImageUrl() != null) {
             d.setImageUrl(normalizeOptional(req.getImageUrl()));
+        }
+        if (req.getDescription() != null) {
+            d.setDescription(normalizeOptional(req.getDescription()));
         }
         return DestinationResponse.from(destinationRepository.save(d));
     }

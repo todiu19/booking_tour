@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 
 function formatDateTime(value) {
-  if (!value) return 'Chua cap nhat'
+  if (!value) return 'Chưa cập nhật'
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return 'Chua cap nhat'
+  if (Number.isNaN(date.getTime())) return 'Chưa cập nhật'
   return date.toLocaleString('vi-VN')
 }
 
@@ -51,7 +51,7 @@ export default function ProfilePage({ refreshMeSignal }) {
         email: updated.email ?? prev.email,
         phone: updated.phone ?? prev.phone,
       }))
-      setMessage('Profile updated')
+      setMessage('Cập nhật hồ sơ thành công')
       setError('')
     } catch (err) {
       setError(err.message)
@@ -59,13 +59,13 @@ export default function ProfilePage({ refreshMeSignal }) {
     }
   }
 
-  if (loading) return <p>Loading profile...</p>
+  if (loading) return <p>Đang tải hồ sơ...</p>
   if (!profile) {
     return (
       <section className="profile-page">
         <div className="profile-hero panel">
-          <h1>Thong tin ca nhan</h1>
-          <p className="muted">Ban can dang nhap de xem va cap nhat thong tin tai khoan.</p>
+          <h1>Thông tin cá nhân</h1>
+          <p className="muted">Bạn cần đăng nhập để xem và cập nhật thông tin tài khoản.</p>
           <div className="actions">
             <Link className="button" to="/login">
               Dang nhap
@@ -82,23 +82,23 @@ export default function ProfilePage({ refreshMeSignal }) {
   return (
     <section className="profile-page">
       <div className="profile-hero panel">
-        <h1>Thong tin ca nhan</h1>
+        <h1>Thông tin cá nhân</h1>
         <p className="muted">
-          Quan ly thong tin ca nhan, bao mat tai khoan va theo doi cac don dat cua ban.
+          Quản lý thông tin cá nhân, bảo mật tài khoản và theo dõi các đơn đặt của bạn.
         </p>
-        <p className="profile-role-pill">Vai tro: {profile?.role?.name || 'CUSTOMER'}</p>
+        <p className="profile-role-pill">Vai trò: {profile?.role?.name || 'CUSTOMER'}</p>
       </div>
 
       <div className="profile-layout">
         <form onSubmit={save} className="profile-card panel profile-account-card">
-          <h2>Thong tin tai khoan</h2>
+          <h2>Thông tin tài khoản</h2>
           <div className="profile-field">
-            <label htmlFor="profile-fullname">Ho va ten</label>
+            <label htmlFor="profile-fullname">Họ và tên</label>
             <input
               id="profile-fullname"
               value={form.fullName}
               onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
-              placeholder="Nhap ho va ten"
+              placeholder="Nhập họ và tên"
               required
             />
           </div>
@@ -107,28 +107,28 @@ export default function ProfilePage({ refreshMeSignal }) {
             <p id="profile-email">{form.email || profile?.email || 'Chua co'}</p>
           </div>
           <div className="profile-field">
-            <label htmlFor="profile-phone">So dien thoai</label>
+            <label htmlFor="profile-phone">Số điện thoại</label>
             <input
               id="profile-phone"
               value={form.phone}
               onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-              placeholder="Nhap so dien thoai"
+              placeholder="Nhập số điện thoại"
               required
             />
           </div>
           <div className="profile-readonly-grid">
             <div className="profile-readonly-item">
-              <label>Trang thai</label>
-              <p>{profile?.active === false ? 'Tam khoa' : 'Hoat dong'}</p>
+              <label>Trạng thái</label>
+              <p>{profile?.active === false ? 'Tạm khóa' : 'Hoạt động'}</p>
             </div>
             <div className="profile-readonly-item">
-              <label>Cap nhat gan nhat</label>
+              <label>Cập nhật gần nhất</label>
               <p>{formatDateTime(profile?.updatedAt || profile?.lastUpdatedAt || profile?.modifiedAt)}</p>
             </div>
           </div>
           <div className="actions">
             <button className="button" type="submit">
-              Luu thong tin
+              Lưu thông tin
             </button>
           </div>
         </form>

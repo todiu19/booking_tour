@@ -1,6 +1,7 @@
 package com.project.bookingtour.common.dto.response;
 
 import com.project.bookingtour.common.enums.ReviewStatus;
+import com.project.bookingtour.common.enums.HotelStatus;
 import com.project.bookingtour.domain.entity.Destination;
 import com.project.bookingtour.domain.entity.Hotel;
 import com.project.bookingtour.domain.entity.HotelImage;
@@ -20,6 +21,7 @@ public class HotelResponse {
     private String description;
     private BigDecimal basePrice;
     private Integer roomCapacity;
+    private HotelStatus status;
     private Long destinationId;
     private String destinationName;
     private Long hotelTypeId;
@@ -41,6 +43,7 @@ public class HotelResponse {
         r.setDescription(hotel.getDescription());
         r.setBasePrice(hotel.getBasePrice());
         r.setRoomCapacity(hotel.getRoomCapacity());
+        r.setStatus(hotel.getStatus());
         Destination destination = hotel.getDestination();
         r.setDestinationId(destination == null ? null : destination.getId());
         r.setDestinationName(destination == null ? null : destination.getName());

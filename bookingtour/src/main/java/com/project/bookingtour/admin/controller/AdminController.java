@@ -3,12 +3,16 @@ package com.project.bookingtour.admin.controller;
 import com.project.bookingtour.common.dto.ApiResponse;
 import com.project.bookingtour.common.dto.request.DestinationCreateRequest;
 import com.project.bookingtour.common.dto.request.DestinationUpdateRequest;
+import com.project.bookingtour.common.dto.request.HotelCreateRequest;
+import com.project.bookingtour.common.dto.request.HotelUpdateRequest;
 import com.project.bookingtour.common.dto.request.TourCreateRequest;
 import com.project.bookingtour.common.dto.request.TourUpdateRequest;
 import com.project.bookingtour.common.dto.request.UserCreateRequest;
 import com.project.bookingtour.common.dto.request.UserUpdateRequest;
 import com.project.bookingtour.common.dto.response.AdminPaymentItemResponse;
 import com.project.bookingtour.common.dto.response.DestinationResponse;
+import com.project.bookingtour.common.dto.response.HotelResponse;
+import com.project.bookingtour.common.dto.response.HotelBookingResponse;
 import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
 import com.project.bookingtour.common.dto.response.PaymentResponse;
@@ -21,13 +25,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.MediaType;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/admin")
@@ -74,6 +76,14 @@ public class AdminController {
         return res;
     }
 
+    @PutMapping("/users/{id}/unblock")
+    public ApiResponse<Void> unblockUser(@PathVariable Long id) {
+        adminService.unblockUser(id);
+        ApiResponse<Void> res = new ApiResponse<>();
+        res.setMessage("User unblocked");
+        return res;
+    }
+
     @GetMapping("/tours")
     public ApiResponse<PageResponse<TourResponse>> listTours(
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
@@ -89,15 +99,6 @@ public class AdminController {
         return res;
     }
 
-    @PostMapping(value = "/tour", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<TourResponse> createWithImages(
-            @RequestPart("tour") TourCreateRequest request,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
-        ApiResponse<TourResponse> res = new ApiResponse<>();
-        res.setData(adminService.createTour(request, files));
-        return res;
-    }
-
     @PutMapping(value = "/tour/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<TourResponse> update(
             @PathVariable Long id, @RequestBody TourUpdateRequest request) {
@@ -106,21 +107,19 @@ public class AdminController {
         return res;
     }
 
-    @PutMapping(value = "/tour/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<TourResponse> updateWithImages(
-            @PathVariable Long id,
-            @RequestPart("tour") TourUpdateRequest request,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
-        ApiResponse<TourResponse> res = new ApiResponse<>();
-        res.setData(adminService.updateTour(id, request, files));
-        return res;
-    }
-
     @PutMapping("/tour/{id}/archive")
     public ApiResponse<Void> archive(@PathVariable Long id) {
         adminService.deleteTour(id);
         ApiResponse<Void> res = new ApiResponse<>();
         res.setMessage("Tour archived");
+        return res;
+    }
+
+    @PutMapping("/tour/{id}/publish")
+    public ApiResponse<Void> publish(@PathVariable Long id) {
+        adminService.publishTour(id);
+        ApiResponse<Void> res = new ApiResponse<>();
+        res.setMessage("Tour published");
         return res;
     }
 
@@ -152,6 +151,60 @@ public class AdminController {
     public ApiResponse<List<AdminPaymentItemResponse>> listPaymentsForAdmin() {
         ApiResponse<List<AdminPaymentItemResponse>> res = new ApiResponse<>();
         res.setData(adminService.listPaymentsForAdmin());
+        return res;
+    }
+
+    @GetMapping("/hotels")
+    public ApiResponse<PageResponse<HotelResponse>> listHotels(
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        ApiResponse<PageResponse<HotelResponse>> res = new ApiResponse<>();
+        res.setData(adminService.listHotels(page, size));
+        return res;
+    }
+
+    @PostMapping("/hotel")
+    public ApiResponse<HotelResponse> createHotel(@RequestBody HotelCreateRequest request) {
+        ApiResponse<HotelResponse> res = new ApiResponse<>();
+        res.setData(adminService.createHotel(request));
+        return res;
+    }
+
+    @PutMapping("/hotel/{id}")
+    public ApiResponse<HotelResponse> updateHotel(
+            @PathVariable Long id, @RequestBody HotelUpdateRequest request) {
+        ApiResponse<HotelResponse> res = new ApiResponse<>();
+        res.setData(adminService.updateHotel(id, request));
+        return res;
+    }
+
+    @PutMapping("/hotel/{id}/block")
+    public ApiResponse<Void> blockHotel(@PathVariable Long id) {
+        adminService.blockHotel(id);
+        ApiResponse<Void> res = new ApiResponse<>();
+        res.setMessage("Hotel blocked");
+        return res;
+    }
+
+    @PutMapping("/hotel/{id}/unblock")
+    public ApiResponse<Void> unblockHotel(@PathVariable Long id) {
+        adminService.unblockHotel(id);
+        ApiResponse<Void> res = new ApiResponse<>();
+        res.setMessage("Hotel unblocked");
+        return res;
+    }
+
+    @GetMapping("/hotel-bookings/cod-pending")
+    public ApiResponse<List<HotelBookingResponse>> listPendingCodHotelBookings() {
+        ApiResponse<List<HotelBookingResponse>> res = new ApiResponse<>();
+        res.setData(adminService.listPendingCodHotelBookings());
+        return res;
+    }
+
+    @PostMapping("/hotel-bookings/{id}/confirm-cod")
+    public ApiResponse<HotelBookingResponse> confirmHotelCodCollected(@PathVariable Long id) {
+        ApiResponse<HotelBookingResponse> res = new ApiResponse<>();
+        res.setData(adminService.confirmHotelCodCollected(id));
+        res.setMessage("Hotel COD collected");
         return res;
     }
 

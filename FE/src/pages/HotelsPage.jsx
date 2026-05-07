@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 
 const SORT_OPTIONS = [
-  { value: 'price_asc', label: 'Gia thap den cao' },
-  { value: 'price_desc', label: 'Gia cao den thap' },
-  { value: 'stars_asc', label: 'Sao tang dan' },
-  { value: 'stars_desc', label: 'Sao giam dan' },
-  { value: 'rating_desc', label: 'Danh gia cao' },
-  { value: 'rating_asc', label: 'Danh gia thap' },
-  { value: 'name_asc', label: 'Ten A-Z' },
-  { value: 'name_desc', label: 'Ten Z-A' },
+  { value: 'price_asc', label: 'Giá thấp đến cao' },
+  { value: 'price_desc', label: 'Giá cao đến thấp' },
+  { value: 'stars_asc', label: 'Sao tăng dần' },
+  { value: 'stars_desc', label: 'Sao giảm dần' },
+  { value: 'rating_desc', label: 'Đánh giá cao' },
+  { value: 'rating_asc', label: 'Đánh giá thấp' },
+  { value: 'name_asc', label: 'Tên A-Z' },
+  { value: 'name_desc', label: 'Tên Z-A' },
 ]
 const STAR_OPTIONS = [5, 4, 3, 2, 1]
 
@@ -22,14 +22,14 @@ function scoreTone(score) {
 }
 
 function scoreLabel(score) {
-  if (score >= 4) return 'Tuyet voi'
+  if (score >= 4) return 'Tuyệt vời'
   if (score >= 3) return 'Rất tốt'
-  if (score >= 2) return 'Te'
-  return 'Rat te'
+  if (score >= 2) return 'Tệ'
+  return 'Rất tệ'
 }
 
 function formatPrice(value) {
-  if (value == null) return 'Lien he'
+  if (value == null) return 'Liên hệ'
   return Number(value).toLocaleString('vi-VN') + ' đ / đêm'
 }
 
@@ -140,7 +140,7 @@ export default function HotelsPage() {
             <input
               type="text"
               className="form-control tour-home-search-keyword search-input"
-              placeholder="Tim khach san..."
+              placeholder="Tìm khách sạn..."
               value={draftKeyword}
               onChange={(e) => setDraftKeyword(e.target.value)}
               onKeyDown={(e) => {
@@ -153,7 +153,7 @@ export default function HotelsPage() {
           </div>
           <div className="hotel-room-capacity-filter">
             <label htmlFor="hotel-room-capacity" className="tour-home-visually-hidden">
-              So nguoi/phong
+              Số người/phòng
             </label>
             <select
               id="hotel-room-capacity"
@@ -161,17 +161,17 @@ export default function HotelsPage() {
               value={draftRoomCapacity}
               onChange={(e) => setDraftRoomCapacity(e.target.value)}
             >
-              <option value="">So nguoi/phong</option>
-              <option value="1">1 nguoi</option>
-              <option value="2">2 nguoi</option>
-              <option value="3">3 nguoi</option>
-              <option value="4">4 nguoi</option>
-              <option value="5">5+ nguoi</option>
+              <option value="">Số người/phòng</option>
+              <option value="1">1 người</option>
+              <option value="2">2 người</option>
+              <option value="3">3 người</option>
+              <option value="4">4 người</option>
+              <option value="5">5+ người</option>
             </select>
           </div>
           <div className="hotel-room-capacity-filter">
             <label htmlFor="hotel-destination" className="tour-home-visually-hidden">
-              Destination
+              Điểm đến
             </label>
             <select
               id="hotel-destination"
@@ -179,7 +179,7 @@ export default function HotelsPage() {
               value={draftDestination}
               onChange={(e) => setDraftDestination(e.target.value)}
             >
-              <option value="">Destination</option>
+              <option value="">Điểm đến</option>
               {destinationOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
@@ -196,12 +196,12 @@ export default function HotelsPage() {
             </div>
           </div>
           <button type="button" className="tour-home-search-submit" onClick={submitSearch}>
-            Tim
+            Tìm
           </button>
         </div>
       </div>
 
-      {loading ? <p>Loading hotels...</p> : null}
+      {loading ? <p>Đang tải danh sách khách sạn...</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
       <div className="hotel-list-layout">
@@ -268,10 +268,10 @@ export default function HotelsPage() {
             aria-expanded={sortOpen}
             onClick={() => setSortOpen((o) => !o)}
           >
-            Sap xep theo <strong>{SORT_OPTIONS.find((x) => x.value === sortBy)?.label || 'Danh gia cao'}</strong>
+            Sắp xếp theo <strong>{SORT_OPTIONS.find((x) => x.value === sortBy)?.label || 'Đánh giá cao'}</strong>
           </button>
           {sortOpen ? (
-            <ul className="tour-sort-menu" role="listbox" aria-label="Sap xep khach san">
+            <ul className="tour-sort-menu" role="listbox" aria-label="Sắp xếp khách sạn">
               {SORT_OPTIONS.map((opt) => (
                 <li key={opt.value} role="none">
                   <button
@@ -301,40 +301,40 @@ export default function HotelsPage() {
               to={`/hotels/${hotel.id}`}
               className="hotel-list-card-link"
               state={{ hotel }}
-              aria-label={hotel.name || `Khach san ${hotel.id}`}
+              aria-label={hotel.name || `Khách sạn ${hotel.id}`}
             >
               <article className="hotel-list-card">
                 {hotel.thumbnailUrl ? (
                   <img src={hotel.thumbnailUrl} alt={hotel.name} className="hotel-list-thumb" />
                 ) : (
-                  <div className="hotel-list-thumb hotel-list-thumb--fallback">No image</div>
+                  <div className="hotel-list-thumb hotel-list-thumb--fallback">Không có ảnh</div>
                 )}
                 <div className="hotel-list-content">
-                  <h3 className="hotel-list-title">{hotel.name || 'Khach san'}</h3>
+                  <h3 className="hotel-list-title">{hotel.name || 'Khách sạn'}</h3>
                   <p className="tour-row-rating">
                     {hasRating ? (
                       <>
                         <span className={`tour-row-score tour-row-score--${scoreTone(avg)}`}>{avg.toFixed(1)}</span>
                         <span className="tour-row-rating-label">{scoreLabel(avg)}</span>
-                        <span className="tour-row-rating-label">({reviews} danh gia)</span>
+                        <span className="tour-row-rating-label">({reviews} đánh giá)</span>
                       </>
                     ) : (
-                      <span className="tour-row-rating-label">Chua co danh gia</span>
+                      <span className="tour-row-rating-label">Chưa có đánh giá</span>
                     )}
                   </p>
-                  {hotel.hotelTypeName ? <p className="hotel-list-address">Loai hinh: {hotel.hotelTypeName}</p> : null}
+                  {hotel.hotelTypeName ? <p className="hotel-list-address">Loại hình: {hotel.hotelTypeName}</p> : null}
                   {hotel.location ? (
-                    <p className="hotel-list-price">Vi tri phong: {hotel.location}</p>
+                    <p className="hotel-list-price">Vị trí phòng: {hotel.location}</p>
                   ) : (
-                    <p className="hotel-list-price">Vi tri phong: Dang cap nhat</p>
+                    <p className="hotel-list-price">Vị trí phòng: Đang cập nhật</p>
                   )}
-                  {hotel.roomCapacity ? <p className="hotel-list-address">Phong {hotel.roomCapacity} nguoi</p> : null}
+                  {hotel.roomCapacity ? <p className="hotel-list-address">Phòng {hotel.roomCapacity} người</p> : null}
                   {hotel.address ? <p className="hotel-list-address">{hotel.address}</p> : null}
                 </div>
                 <div className="hotel-list-cta-col">
                   <p className="hotel-list-cta-note">Giá trung bình mỗi đêm</p>
                   <p className="hotel-list-cta-price">{formatPrice(hotel.basePrice)}</p>
-                  <span className="tour-row-cta">Xem chi tiet</span>
+                  <span className="tour-row-cta">Xem chi tiết</span>
                 </div>
               </article>
             </Link>
@@ -343,7 +343,7 @@ export default function HotelsPage() {
       </div>
       </div>
 
-      {!loading && (data || []).length === 0 ? <p>Khong tim thay khach san.</p> : null}
+      {!loading && (data || []).length === 0 ? <p>Không tìm thấy khách sạn phù hợp.</p> : null}
     </section>
   )
 }

@@ -218,4 +218,14 @@ public class UserService {
         user.setStatus(UserStatus.blocked);
         userRepository.save(user);
     }
+
+    @Transactional
+    public void unblockUser(Long id) {
+        User user =
+                userRepository
+                        .findById(id)
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        user.setStatus(UserStatus.active);
+        userRepository.save(user);
+    }
 }

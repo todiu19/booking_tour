@@ -1,11 +1,13 @@
 package com.project.bookingtour.dashboard.controller;
 
 import com.project.bookingtour.common.dto.ApiResponse;
+import com.project.bookingtour.dashboard.dto.DashboardMonthlyResponse;
 import com.project.bookingtour.dashboard.dto.DashboardSummaryResponse;
 import com.project.bookingtour.dashboard.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,6 +21,14 @@ public class DashboardController {
     public ApiResponse<DashboardSummaryResponse> getDashboardSummary() {
         ApiResponse<DashboardSummaryResponse> res = new ApiResponse<>();
         res.setData(dashboardService.getSummary());
+        return res;
+    }
+
+    @GetMapping("/monthly")
+    public ApiResponse<DashboardMonthlyResponse> getDashboardMonthly(
+            @RequestParam(defaultValue = "12") int months) {
+        ApiResponse<DashboardMonthlyResponse> res = new ApiResponse<>();
+        res.setData(dashboardService.getMonthlyStats(months));
         return res;
     }
 }

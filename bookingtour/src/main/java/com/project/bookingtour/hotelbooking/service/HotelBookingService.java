@@ -5,20 +5,29 @@ import com.project.bookingtour.common.dto.response.HotelBookingResponse;
 import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
+import com.project.bookingtour.common.enums.HotelStatus;
+import com.project.bookingtour.common.enums.PaymentProvider;
+import com.project.bookingtour.common.enums.PaymentStatus;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.domain.entity.Hotel;
 import com.project.bookingtour.domain.entity.HotelBooking;
+import com.project.bookingtour.domain.entity.Invoice;
+import com.project.bookingtour.domain.entity.Payment;
 import com.project.bookingtour.domain.entity.User;
 import com.project.bookingtour.domain.repository.HotelBookingRepository;
 import com.project.bookingtour.domain.repository.HotelRepository;
 import com.project.bookingtour.domain.repository.HotelReviewRepository;
+import com.project.bookingtour.domain.repository.InvoiceRepository;
+import com.project.bookingtour.domain.repository.PaymentRepository;
 import com.project.bookingtour.domain.repository.UserRepository;
 import java.math.BigDecimal;
 import java.util.HashSet;
+import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ThreadLocalRandom;
+import java.math.RoundingMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +43,8 @@ public class HotelBookingService {
     private final UserRepository userRepository;
     private final HotelRepository hotelRepository;
     private final HotelReviewRepository hotelReviewRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<HotelBookingResponse> listMyBookings(Long userId, int page, int size) {
@@ -46,9 +57,23 @@ public class HotelBookingService {
         if (!ids.isEmpty()) {
             reviewedIds.addAll(hotelReviewRepository.findReviewedBookingIds(ids));
         }
+        Map<Long, Invoice> invoiceMap =
+                ids.isEmpty()
+                        ? Map.of()
+                        : invoiceRepository.findByHotelBooking_IdIn(ids).stream()
+                                .filter(inv -> inv.getHotelBooking() != null && inv.getHotelBooking().getId() != null)
+                                .collect(java.util.stream.Collectors.toMap(inv -> inv.getHotelBooking().getId(), inv -> inv));
         java.util.Set<Long> finalReviewed = reviewedIds;
         Page<HotelBookingResponse> mapped =
-                raw.map(b -> HotelBookingResponse.from(b, finalReviewed.contains(b.getId())));
+                raw.map(
+                        b -> {
+                            Invoice inv = invoiceMap.get(b.getId());
+                            return HotelBookingResponse.from(
+                                    b,
+                                    finalReviewed.contains(b.getId()),
+                                    inv != null ? inv.getId() : null,
+                                    inv != null);
+                        });
         return PageResponse.fromPage(mapped);
     }
 
@@ -58,8 +83,12 @@ public class HotelBookingService {
                 hotelBookingRepository
                         .findByIdAndUser_Id(bookingId, userId)
                         .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+        Invoice inv = invoiceRepository.findByHotelBooking_Id(booking.getId()).orElse(null);
         return HotelBookingResponse.from(
-                booking, hotelReviewRepository.existsByHotelBooking_Id(booking.getId()));
+                booking,
+                hotelReviewRepository.existsByHotelBooking_Id(booking.getId()),
+                inv != null ? inv.getId() : null,
+                inv != null);
     }
 
     @Transactional
@@ -82,6 +111,9 @@ public class HotelBookingService {
                 hotelRepository
                         .findById(req.getHotelId())
                         .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Hotel not found"));
+        if (hotel.getStatus() != HotelStatus.active) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Hotel is not available");
+        }
 
         String contactName =
                 req.getContactName() != null && !req.getContactName().isBlank()
@@ -107,6 +139,7 @@ public class HotelBookingService {
 
         int roomCount = req.getRoomCount() == null ? 1 : Math.max(req.getRoomCount(), 1);
         int guestCount = req.getGuestCount() == null ? 1 : Math.max(req.getGuestCount(), 1);
+        PaymentProvider paymentMethod = req.getPaymentMethod() == null ? PaymentProvider.cod : req.getPaymentMethod();
         long nights = Math.max(req.getCheckOutDate().toEpochDay() - req.getCheckInDate().toEpochDay(), 1L);
         BigDecimal basePrice = hotel.getBasePrice() == null ? BigDecimal.ZERO : hotel.getBasePrice();
         BigDecimal total = basePrice.multiply(BigDecimal.valueOf(nights)).multiply(BigDecimal.valueOf(roomCount));
@@ -123,12 +156,23 @@ public class HotelBookingService {
         booking.setRoomCount(roomCount);
         booking.setGuestCount(guestCount);
         booking.setTotalAmount(total);
-        booking.setBookingStatus(BookingStatus.pending);
-        booking.setPaymentStatus(BookingPaymentStatus.unpaid);
+        booking.setPaymentMethod(paymentMethod);
+        if (paymentMethod == PaymentProvider.vnpay) {
+            booking.setBookingStatus(BookingStatus.confirmed);
+            booking.setPaymentStatus(BookingPaymentStatus.paid);
+        } else {
+            booking.setBookingStatus(BookingStatus.pending);
+            booking.setPaymentStatus(BookingPaymentStatus.unpaid);
+        }
         booking.setNote(req.getNote());
 
         HotelBooking saved = hotelBookingRepository.save(booking);
-        return HotelBookingResponse.from(saved);
+        Payment payment = createHotelPaymentIfAbsent(saved);
+        Invoice invoice = null;
+        if (saved.getPaymentStatus() == BookingPaymentStatus.paid) {
+            invoice = createHotelInvoiceIfAbsent(saved, payment);
+        }
+        return HotelBookingResponse.from(saved, false, invoice != null ? invoice.getId() : null, invoice != null);
     }
 
     @Transactional
@@ -150,6 +194,16 @@ public class HotelBookingService {
 
         booking.setBookingStatus(BookingStatus.cancelled);
         hotelBookingRepository.save(booking);
+        paymentRepository
+                .findByHotelBooking_Id(booking.getId())
+                .ifPresent(
+                        payment -> {
+                            if (payment.getPaymentStatus() == PaymentStatus.pending) {
+                                payment.setPaymentStatus(PaymentStatus.failed);
+                                payment.setRawResponse("{\"cancelled\":true,\"source\":\"hotel_booking_cancel\"}");
+                                paymentRepository.save(payment);
+                            }
+                        });
         return HotelBookingResponse.from(booking);
     }
 
@@ -162,5 +216,79 @@ public class HotelBookingService {
             }
         }
         throw new AppException(ErrorCode.INTERNAL_ERROR, "Unable to generate hotel booking code");
+    }
+
+    private Payment createHotelPaymentIfAbsent(HotelBooking booking) {
+        var existing = paymentRepository.findByHotelBooking_Id(booking.getId());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        Payment payment = new Payment();
+        payment.setBooking(null);
+        payment.setHotelBooking(booking);
+        payment.setProvider(booking.getPaymentMethod());
+        payment.setTransactionRef(generatePaymentRef(booking.getPaymentMethod()));
+        payment.setAmount(booking.getTotalAmount() == null ? BigDecimal.ZERO : booking.getTotalAmount());
+        payment.setPaymentStatus(
+                booking.getPaymentStatus() == BookingPaymentStatus.paid
+                        ? PaymentStatus.success
+                        : PaymentStatus.pending);
+        if (booking.getPaymentStatus() == BookingPaymentStatus.paid) {
+            payment.setPaidAt(LocalDateTime.now());
+        }
+        return paymentRepository.save(payment);
+    }
+
+    private Invoice createHotelInvoiceIfAbsent(HotelBooking booking, Payment payment) {
+        var existing = invoiceRepository.findByHotelBooking_Id(booking.getId());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        BigDecimal subtotal = booking.getTotalAmount() == null ? BigDecimal.ZERO : booking.getTotalAmount();
+        BigDecimal tax = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(tax);
+        Invoice inv = new Invoice();
+        inv.setInvoiceNo(generateInvoiceNo());
+        inv.setBooking(null);
+        inv.setHotelBooking(booking);
+        inv.setUser(booking.getUser());
+        inv.setPayment(payment);
+        inv.setIssuedAt(LocalDateTime.now());
+        inv.setSubtotalAmount(subtotal);
+        inv.setTaxAmount(tax);
+        inv.setTotalAmount(total);
+        inv.setBillingName(booking.getContactName());
+        inv.setBillingPhone(booking.getContactPhone());
+        inv.setBillingEmail(booking.getContactEmail());
+        inv.setBillingAddress(null);
+        inv.setNote("Auto-generated after hotel booking payment success");
+        return invoiceRepository.save(inv);
+    }
+
+    private String generatePaymentRef(PaymentProvider provider) {
+        String prefix = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());
+        for (int i = 0; i < 20; i++) {
+            String candidate =
+                    provider.name().toUpperCase()
+                            + "-H-"
+                            + prefix
+                            + "-"
+                            + ThreadLocalRandom.current().nextInt(1000, 10000);
+            if (paymentRepository.findByTransactionRef(candidate).isEmpty()) {
+                return candidate;
+            }
+        }
+        throw new AppException(ErrorCode.INTERNAL_ERROR, "Unable to generate hotel payment reference");
+    }
+
+    private String generateInvoiceNo() {
+        String prefix = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());
+        for (int i = 0; i < 20; i++) {
+            String candidate = "INVH" + prefix + ThreadLocalRandom.current().nextInt(100, 1000);
+            if (invoiceRepository.findByInvoiceNo(candidate).isEmpty()) {
+                return candidate;
+            }
+        }
+        throw new AppException(ErrorCode.INTERNAL_ERROR, "Unable to generate hotel invoice number");
     }
 }

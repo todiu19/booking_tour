@@ -5,10 +5,10 @@ import { api } from '../api'
 const EMPTY_FILTERS = { keyword: '', departurePoint: '', sortBy: 'departure_date' }
 const VI_WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 const SORT_OPTIONS = [
-  { value: 'departure_date', label: 'Ngay khoi hanh' },
-  { value: 'rating_desc', label: 'Danh gia cao' },
-  { value: 'price_asc', label: 'Gia thap den cao' },
-  { value: 'price_desc', label: 'Gia cao den thap' },
+  { value: 'departure_date', label: 'Ngày khởi hành' },
+  { value: 'rating_desc', label: 'Đánh giá cao' },
+  { value: 'price_asc', label: 'Giá thấp đến cao' },
+  { value: 'price_desc', label: 'Giá cao đến thấp' },
 ]
 const PRICE_FILTER_OPTIONS = [
   { key: 'under_11', label: '< 11 triệu', min: null, max: 11_000_000 },
@@ -59,7 +59,7 @@ function buildCalendarCells(year, month) {
 }
 
 function formatPrice(value) {
-  if (value == null) return 'N/A'
+  if (value == null) return 'Chưa có'
   return Number(value).toLocaleString('vi-VN') + ' đ'
 }
 
@@ -90,22 +90,22 @@ function extractRatingInfo(tour) {
   const count = Number(countRaw)
   const hasRating = Number.isFinite(avg) && avg > 0 && Number.isFinite(count) && count > 0
   let tone = 'very-bad'
-  let text = 'Rat te'
+  let text = 'Rất tệ'
   if (avg >= 4) {
     tone = 'excellent'
-    text = 'Tuyet voi'
+    text = 'Tuyệt vời'
   } else if (avg >= 3) {
     tone = 'ok'
-    text = 'On'
+    text = 'Rất tốt'
   } else if (avg >= 2) {
     tone = 'bad'
-    text = 'Te'
+    text = 'Tệ'
   }
   return {
     hasRating,
     scoreText: hasRating ? avg.toFixed(1) : '',
     tone,
-    label: hasRating ? `${text} | ${count} danh gia` : 'Chua co danh gia',
+    label: hasRating ? `${text} | ${count} đánh giá` : 'Chưa có đánh giá',
   }
 }
 
@@ -346,7 +346,7 @@ export default function ToursPage() {
               }`}
               aria-expanded={originOpen}
               aria-haspopup="listbox"
-              aria-label="Khoi hanh tu"
+              aria-label="Khởi hành từ"
               onClick={(e) => {
                 e.stopPropagation()
                 setOriginOpen((o) => !o)
@@ -368,7 +368,7 @@ export default function ToursPage() {
               </div>
             </button>
             {originOpen ? (
-              <ul className="tour-home-origin-list" role="listbox" aria-label="Danh sach diem khoi hanh" onClick={(e) => e.stopPropagation()}>
+              <ul className="tour-home-origin-list" role="listbox" aria-label="Danh sách điểm khởi hành" onClick={(e) => e.stopPropagation()}>
                 {originOptions.map((opt) => (
                   <li key={opt} role="none">
                     <button
@@ -405,7 +405,7 @@ export default function ToursPage() {
               }`}
               aria-expanded={countryOpen}
               aria-haspopup="listbox"
-              aria-label="Quoc gia"
+              aria-label="Quốc gia"
               onClick={(e) => {
                 e.stopPropagation()
                 setCountryOpen((o) => !o)
@@ -417,7 +417,7 @@ export default function ToursPage() {
               </div>
             </button>
             {countryOpen ? (
-              <ul className="tour-home-origin-list" role="listbox" aria-label="Danh sach quoc gia" onClick={(e) => e.stopPropagation()}>
+              <ul className="tour-home-origin-list" role="listbox" aria-label="Danh sách quốc gia" onClick={(e) => e.stopPropagation()}>
                 <li role="none">
                   <button
                     type="button"
@@ -445,7 +445,7 @@ export default function ToursPage() {
         </div>
       </div>
 
-      {loading && <p>Loading tours...</p>}
+      {loading && <p>Đang tải danh sách tour...</p>}
       {error && <p className="error">{error}</p>}
 
       <div className="tour-list-content">
@@ -461,18 +461,18 @@ export default function ToursPage() {
               <button
                 type="button"
                 className="tour-home-date-nav"
-                aria-label="Thang truoc"
+                aria-label="Tháng trước"
                 onClick={() => setDepartureView(new Date(calYear, calMonth - 1, 1))}
               >
                 ‹
               </button>
               <strong className="tour-left-date-month">
-                Thang {calMonth + 1}/{calYear}
+                Tháng {calMonth + 1}/{calYear}
               </strong>
               <button
                 type="button"
                 className="tour-home-date-nav"
-                aria-label="Thang sau"
+                aria-label="Tháng sau"
                 onClick={() => setDepartureView(new Date(calYear, calMonth + 1, 1))}
               >
                 ›
@@ -558,10 +558,10 @@ export default function ToursPage() {
               aria-expanded={sortOpen}
               onClick={() => setSortOpen((o) => !o)}
             >
-              Sap xep theo <strong>{SORT_OPTIONS.find((x) => x.value === sortBy)?.label || 'Ngay khoi hanh'}</strong>
+            Sắp xếp theo <strong>{SORT_OPTIONS.find((x) => x.value === sortBy)?.label || 'Ngày khởi hành'}</strong>
             </button>
             {sortOpen ? (
-              <ul className="tour-sort-menu" role="listbox" aria-label="Sap xep tour">
+            <ul className="tour-sort-menu" role="listbox" aria-label="Sắp xếp tour">
                 {SORT_OPTIONS.map((opt) => (
                   <li key={opt.value} role="none">
                     <button
@@ -591,7 +591,7 @@ export default function ToursPage() {
                 {tour.thumbnailUrl ? (
                   <img src={tour.thumbnailUrl} alt={tour.name} className="tour-row-image" />
                 ) : (
-                  <div className="tour-row-image tour-row-image-fallback">No image</div>
+                  <div className="tour-row-image tour-row-image-fallback">Không có ảnh</div>
                 )}
                 <div className="tour-row-content">
                   <p className="tour-row-rating">
@@ -602,8 +602,8 @@ export default function ToursPage() {
                   </p>
                   <h3 className="tour-row-title">{tour.name}</h3>
                   <p className="tour-row-meta">
-                    <span>{tour.durationDays || 1} ngay</span>
-                    <span>Khoi hanh {tour.departurePoint || 'TP HCM'}</span>
+                  <span>{tour.durationDays || 1} ngày</span>
+                  <span>Khởi hành {tour.departurePoint || 'TP HCM'}</span>
                   </p>
                   <div className="tour-row-tags">
                     {parseDestinationTags(tour.destinationList).slice(0, 4).map((tag) => (
@@ -614,17 +614,17 @@ export default function ToursPage() {
                   </div>
                 </div>
                 <div className="tour-row-price-col">
-                  <p className="tour-row-price-label">Gia chi</p>
+                  <p className="tour-row-price-label">Giá chỉ</p>
                   <p className="tour-row-price">{formatPrice(tour.basePrice)}</p>
                   <p className="tour-row-date-note">
-                    Khoi hanh ngay{' '}
+                    Khởi hành ngày{' '}
                     {selectedDepartureIso
                       ? new Date(selectedDepartureIso).toLocaleDateString('vi-VN')
                       : Array.isArray(tour.departureDates) && tour.departureDates[0]
                         ? new Date(tour.departureDates[0]).toLocaleDateString('vi-VN')
-                        : 'Linh hoat'}
+                        : 'Linh hoạt'}
                   </p>
-                  <span className="tour-row-cta">Xem chi tiet</span>
+                  <span className="tour-row-cta">Xem chi tiết</span>
                 </div>
               </article>
                 )
@@ -634,7 +634,7 @@ export default function ToursPage() {
         </div>
       </div>
 
-      {!loading && displayedTours.length === 0 ? <p>No tours found.</p> : null}
+      {!loading && displayedTours.length === 0 ? <p>Không tìm thấy tour phù hợp.</p> : null}
 
     </section>
   )

@@ -2,6 +2,7 @@ package com.project.bookingtour.common.dto.response;
 
 import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
+import com.project.bookingtour.common.enums.PaymentProvider;
 import com.project.bookingtour.domain.entity.HotelBooking;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,20 +27,30 @@ public class HotelBookingResponse {
     private BigDecimal totalAmount;
     private BookingStatus bookingStatus;
     private BookingPaymentStatus paymentStatus;
+    private PaymentProvider paymentMethod;
     private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Long invoiceId;
+    private boolean canViewInvoice;
     /** true if user already submitted an order-linked review for this booking */
     private boolean reviewed;
 
     public static HotelBookingResponse from(HotelBooking booking) {
-        return from(booking, false);
+        return from(booking, false, null, false);
     }
 
     public static HotelBookingResponse from(HotelBooking booking, boolean reviewed) {
+        return from(booking, reviewed, null, false);
+    }
+
+    public static HotelBookingResponse from(
+            HotelBooking booking, boolean reviewed, Long invoiceId, boolean canViewInvoice) {
         if (booking == null) return null;
         HotelBookingResponse r = new HotelBookingResponse();
         r.setReviewed(reviewed);
+        r.setInvoiceId(invoiceId);
+        r.setCanViewInvoice(canViewInvoice);
         r.setId(booking.getId());
         r.setBookingCode(booking.getBookingCode());
         r.setUserId(booking.getUser() != null ? booking.getUser().getId() : null);
@@ -55,6 +66,7 @@ public class HotelBookingResponse {
         r.setTotalAmount(booking.getTotalAmount());
         r.setBookingStatus(booking.getBookingStatus());
         r.setPaymentStatus(booking.getPaymentStatus());
+        r.setPaymentMethod(booking.getPaymentMethod());
         r.setNote(booking.getNote());
         r.setCreatedAt(booking.getCreatedAt());
         r.setUpdatedAt(booking.getUpdatedAt());

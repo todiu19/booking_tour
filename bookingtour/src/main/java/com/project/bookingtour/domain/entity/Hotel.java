@@ -1,7 +1,10 @@
 package com.project.bookingtour.domain.entity;
 
+import com.project.bookingtour.common.enums.HotelStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -51,6 +54,10 @@ public class Hotel {
 
     @Column(name = "room_capacity")
     private Integer roomCapacity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private HotelStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "destination_id", columnDefinition = "BIGINT UNSIGNED")

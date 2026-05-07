@@ -33,24 +33,25 @@ export default function InvoiceDetailPage() {
     }
   }, [id])
 
-  if (loading) return <p>Loading invoice detail...</p>
+  if (loading) return <p>Đang tải chi tiết hóa đơn...</p>
   if (error) return <p className="error">{error}</p>
-  if (!invoice) return <p>Invoice not found.</p>
+  if (!invoice) return <p>Không tìm thấy hóa đơn.</p>
 
   return (
     <section className="stack panel">
-      <h1>Invoice {invoice.invoiceNo}</h1>
-      <p>Booking ID: {invoice.bookingId}</p>
-      <p>Issued at: {invoice.issuedAt || '-'}</p>
-      <p>Subtotal: {formatPrice(invoice.subtotalAmount)}</p>
-      <p>Tax: {formatPrice(invoice.taxAmount)}</p>
-      <p>Total: {formatPrice(invoice.totalAmount)}</p>
-      <h3>Billing info</h3>
+      <h1>Hóa đơn {invoice.invoiceNo}</h1>
+      <p>Mã đơn tour: {invoice.bookingId || '-'}</p>
+      <p>Mã đơn khách sạn: {invoice.hotelBookingId || '-'}</p>
+      <p>Ngày phát hành: {invoice.issuedAt || '-'}</p>
+      <p>Tạm tính: {formatPrice(invoice.subtotalAmount)}</p>
+      <p>Thuế: {formatPrice(invoice.taxAmount)}</p>
+      <p>Tổng cộng: {formatPrice(invoice.totalAmount)}</p>
+      <h3>Thông tin xuất hóa đơn</h3>
       <p>{invoice.billingName}</p>
       <p>{invoice.billingPhone}</p>
       <p>{invoice.billingEmail}</p>
       <p>{invoice.billingAddress}</p>
-      {invoice.note ? <p className="muted">Note: {invoice.note}</p> : null}
+      {invoice.note ? <p className="muted">Ghi chú: {invoice.note}</p> : null}
     </section>
   )
 }

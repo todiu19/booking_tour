@@ -42,6 +42,9 @@ public class Destination {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

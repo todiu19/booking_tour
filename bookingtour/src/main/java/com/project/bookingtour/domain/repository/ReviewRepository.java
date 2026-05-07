@@ -19,6 +19,16 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     boolean existsByUser_IdAndTour_Id(Long userId, Long tourId);
 
+    @Query(
+            """
+            SELECT DISTINCT r.tour.id
+            FROM Review r
+            WHERE r.user.id = :userId
+              AND r.tour.id IN :tourIds
+            """)
+    List<Long> findReviewedTourIdsByUser(
+            @Param("userId") Long userId, @Param("tourIds") List<Long> tourIds);
+
     long countByStatus(ReviewStatus status);
 
     @Query(

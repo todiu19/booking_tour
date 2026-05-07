@@ -35,9 +35,13 @@ public class Payment {
     @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "booking_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id", columnDefinition = "BIGINT UNSIGNED")
     private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_booking_id", columnDefinition = "BIGINT UNSIGNED")
+    private HotelBooking hotelBooking;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

@@ -8,7 +8,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -35,9 +34,13 @@ public class Invoice {
     @Column(name = "invoice_no", nullable = false, length = 30, unique = true)
     private String invoiceNo;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "booking_id", nullable = false, unique = true, columnDefinition = "BIGINT UNSIGNED")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id", unique = true, columnDefinition = "BIGINT UNSIGNED")
     private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_booking_id", unique = true, columnDefinition = "BIGINT UNSIGNED")
+    private HotelBooking hotelBooking;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")

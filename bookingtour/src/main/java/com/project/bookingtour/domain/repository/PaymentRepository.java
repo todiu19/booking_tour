@@ -17,9 +17,17 @@ import org.springframework.stereotype.Repository;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByTransactionRef(String transactionRef);
+
+    List<Payment> findByBooking_Id(Long bookingId);
+
+    Optional<Payment> findByHotelBooking_Id(Long hotelBookingId);
+
+    List<Payment> findByHotelBooking_IdIn(List<Long> hotelBookingIds);
+
     List<Payment> findByProviderAndPaymentStatusOrderByCreatedAtDesc(
             PaymentProvider provider, PaymentStatus paymentStatus);
-    @EntityGraph(attributePaths = {"booking", "booking.tour"})
+
+    @EntityGraph(attributePaths = {"booking", "booking.tour", "hotelBooking", "hotelBooking.hotel"})
     List<Payment> findAllByOrderByCreatedAtDesc();
 
     long countByPaymentStatus(PaymentStatus paymentStatus);

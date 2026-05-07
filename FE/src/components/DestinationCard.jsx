@@ -10,7 +10,8 @@ export default function DestinationCard({ destination }) {
       )}
       <div className="destination-visual-overlay">
         <h3>{destination.name}</h3>
-        <p>{destination.country || destination.province}</p>
+        <p className="destination-visual-location">{destination.country || destination.province}</p>
+        {destination.description ? <p className="destination-visual-description">{destination.description}</p> : null}
       </div>
     </Link>
   )

@@ -18,6 +18,7 @@ import AdminRoute from './components/AdminRoute'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminToursPage from './pages/AdminToursPage'
+import AdminHotelsPage from './pages/AdminHotelsPage'
 import AdminDestinationsPage from './pages/AdminDestinationsPage'
 import AdminCodConfirmPage from './pages/AdminCodConfirmPage'
 import TourHomeNav from './components/TourHomeNav'
@@ -105,6 +106,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/hotels"
+            element={
+              <AdminRoute>
+                <AdminHotelsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/destinations"
             element={
               <AdminRoute>
@@ -126,35 +135,40 @@ function App() {
       <footer className="app-footer">
         <div className="container footer-inner">
           <div className="footer-col">
-            <h3 className="footer-brand">BOOKING TOUR</h3>
-            <p className="footer-muted">He thong dat tour nhanh chong, tien loi va uy tin.</p>
+            <h3 className="footer-brand">BOOKING.COM</h3>
+            <p className="footer-muted">Hệ thống đặt tour, khách sạn nhanh chóng, tiện lợi và uy tín.</p>
             <div className="footer-social">
-              <a href="#" aria-label="Facebook">
-                f
-              </a>
-              <a href="#" aria-label="Instagram">
-                i
-              </a>
-              <a href="#" aria-label="Tiktok">
-                t
-              </a>
+              <a className="fa-brands fa-facebook-f " href="https://www.facebook.com/" target="_blank" aria-label="Facebook"></a>
+              <a className="fa-brands fa-instagram" href="http://www.instagram.com/" target="_blank" aria-label="Instagram"></a>
+              <a className="fa-brands fa-tiktok" href="https://www.tiktok.com/" target="_blank" aria-label="Tiktok"></a>
             </div>
           </div>
           <div className="footer-col">
-            <h4>Kham Pha</h4>
+            <h4>Khám Phá</h4>
             <div className="footer-links">
-              <Link to="/">Trang chu</Link>
-              <Link to="/tours">Tours</Link>
-              <Link to="/destinations">Diem den</Link>
-              <Link to="/bookings">Dat cho cua toi</Link>
+              <Link to="/" > 
+                <i className="fa-notdog fa-solid fa-house"/> Trang chủ
+              </Link>
+              <Link to="/tours">
+                <i className="fa-notdog fa-solid fa-route"/> Tours
+              </Link>
+              <Link to="/hotels">
+                <i className="fa-solid fa-hotel"/> Khách sạn
+              </Link>
+              <Link to="/destinations">
+                <i className="fa-solid fa-map-location-dot" aria-hidden="true" /> Địa điểm nổi tiếng
+              </Link>
+              {/* <Link to="/bookings">
+                <i class="fa-solid fa-receipt"/> Đơn hàng của tôi
+              </Link> */}
             </div>
           </div>
           <div className="footer-col">
-            <h4>Lien He</h4>
+            <h4>Liên Hệ</h4>
             <div className="footer-contact">
-              <p>📍 123 Duong ABC, Quan Thu Duc, TP.HCM</p>
-              <p>📞 0123 456 789</p>
-              <p>✉️ contact@bookingtour.com</p>
+              <p><i className="fa-solid fa-map-pin" aria-hidden="true" /> 10 Đường Trần Phú, Quận Hà Đông, Hà Nội</p>
+              <p><i class="fa-solid fa-phone"></i> 0123 456 789</p>
+              <p><i class="fa-solid fa-envelope"></i> tonguyen191224@gmail.com</p>
             </div>
           </div>
         </div>
@@ -170,7 +184,7 @@ function App() {
             >
               ×
             </button>
-            <h3>Ban phai dang nhap de thuc hien chuc nang</h3>
+            <h3>Bạn phải đăng nhập để thực hiện chức năng</h3>
             <div className="actions">
               <button
                 type="button"
@@ -180,7 +194,7 @@ function App() {
                   navigate('/login')
                 }}
               >
-                Dang nhap
+                Đăng nhập
               </button>
               <button
                 type="button"
@@ -190,7 +204,7 @@ function App() {
                   navigate('/register')
                 }}
               >
-                Dang ky
+                Đăng ký
               </button>
             </div>
           </div>

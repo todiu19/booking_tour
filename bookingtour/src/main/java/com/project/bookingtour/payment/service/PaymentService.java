@@ -188,6 +188,12 @@ public class PaymentService {
         if (payment.getPaymentStatus() != PaymentStatus.pending) {
             throw new AppException(ErrorCode.PAYMENT_NOT_PENDING);
         }
+        if (payment.getBooking() == null) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Payment does not belong to a tour booking");
+        }
+        if (payment.getBooking().getBookingStatus() == BookingStatus.cancelled) {
+            throw new AppException(ErrorCode.BOOKING_CANNOT_CANCEL, "Cancelled booking cannot confirm COD");
+        }
 
         payment.setPaymentStatus(PaymentStatus.success);
         payment.setPaidAt(LocalDateTime.now(VN_ZONE));

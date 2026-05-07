@@ -9,4 +9,5 @@ public class DestinationUpdateRequest {
     private String province;
     private String country;
     private String imageUrl;
+    private String description;
 }

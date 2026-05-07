@@ -33,6 +33,7 @@ export default function HotelDetailPage() {
     note: '',
     roomCount: 1,
     guestCount: 1,
+    paymentMethod: 'cod',
     checkInDate: '',
     checkOutDate: '',
   })
@@ -101,10 +102,10 @@ export default function HotelDetailPage() {
     return (
       <section className="stack">
         <div className="panel stack">
-          <h1>Chi tiet khach san</h1>
-          <p className="muted">Khong co du lieu chi tiet cho khach san nay.</p>
+          <h1>CHi tiết khách sạn</h1>
+          <p className="muted">Không có dữ liệu chi tiết cho khách sạn này</p>
           <Link className="button" to="/tours">
-            Quay lai danh sach tour
+            Quay lại danh sách khách sạn
           </Link>
         </div>
       </section>
@@ -156,7 +157,7 @@ export default function HotelDetailPage() {
       setShowBookingForm(true)
     } catch {
       setShowBookingForm(false)
-      setBookingLoginError('Vui long dang nhap de dat phong khach san.')
+      setBookingLoginError('Vui lòng đăng nhập để đặt phòng khách sạn.')
       window.dispatchEvent(new CustomEvent('app:auth-required'))
     }
   }
@@ -185,12 +186,18 @@ export default function HotelDetailPage() {
         checkOutDate: bookingForm.checkOutDate,
         roomCount: Number(bookingForm.roomCount || 1),
         guestCount: Number(bookingForm.guestCount || 1),
+        paymentMethod: bookingForm.paymentMethod || 'cod',
         note: bookingForm.note || '',
       }
       const result = await api.createHotelBooking(payload)
-      setBookingSuccess(`Dat phong thanh cong. Ma dat phong: ${result?.bookingCode || 'HB-' + (result?.id || '')}`)
+      const code = result?.bookingCode || `HB-${result?.id || ''}`
+      const payNote =
+        bookingForm.paymentMethod === 'vnpay'
+          ? 'Đã tạo thanh toán online.'
+          : 'Đã tạo đơn thành công. Vui lòng thanh toán tại văn phòng để được xác nhận.'
+      setBookingSuccess(`Đặt phòng thành công. Mã đơn: ${code}. ${payNote}`)
     } catch (e) {
-      setBookingError(e.message || 'Dat phong that bai')
+      setBookingError(e.message || 'Đặt phòng thất bại.')
     } finally {
       setBookingSubmitting(false)
     }
@@ -200,14 +207,14 @@ export default function HotelDetailPage() {
     <section className="hotel-detail-page">
       <div className="hotel-detail-head">
         <h1>
-          {hotel.name || `Khach san #${id}`} <span className="hotel-detail-stars">{'★'.repeat(stars)}</span>
+          {hotel.name || `Khách sạn #${id}`} <span className="hotel-detail-stars">{'★'.repeat(stars)}</span>
         </h1>
         <p className="hotel-detail-address">
           {hotel.location
-            ? `Vi tri: ${hotel.location}`
+            ? `Vị trí: ${hotel.location}`
             : hotel.address
-              ? `Vi tri: ${hotel.address}`
-              : 'Vi tri: Dang cap nhat'}
+              ? `Vị trí: ${hotel.address}`
+              : 'VỊ trí: Đang cập nhật'}
         </p>
       </div>
 
@@ -249,7 +256,7 @@ export default function HotelDetailPage() {
                   className="hotel-detail-more-tile"
                   style={fallbackOverlayImage ? { backgroundImage: `url(${fallbackOverlayImage})` } : undefined}
                 >
-                  <span>+{hiddenImageCount} hinh</span>
+                  <span>+{hiddenImageCount} ảnh</span>
                 </div>
               )
             }
@@ -271,25 +278,24 @@ export default function HotelDetailPage() {
 
       <div className="hotel-detail-body">
         <div className="hotel-detail-left panel">
-          <h2>Thong tin khach san</h2>
+          <h2>Thông tin khách sạn</h2>
           <div className="hotel-detail-info-box">
             {descriptionBlocks.length > 0 ? (
               descriptionBlocks.map((line, idx) => <p key={`${idx}-${line}`}>{line}</p>)
             ) : (
               <>
                 <p>
-                  {hotel.name || 'Khach san'} la diem luu tru phu hop cho nghi duong va cong tac, voi khong gian thoai
-                  mai va tien nghi.
+                  {hotel.name || 'Khach san'} là điểm lưu trú phù hợp cho nghỉ dưỡng và công tác, với không gian thoải mái và đầy đủ tiện nghi.
                 </p>
                 <p>
                   {hotel.location
-                    ? `Vi tri phong: ${hotel.location}.`
-                    : 'Vi tri thuan tien de di chuyen den cac diem tham quan noi bat.'}
+                    ? `Vị trí: ${hotel.location}.`
+                    : 'Vị trí thuận tiển để di chuyển tới các điểm tham quan nổi tiếng.'}
                 </p>
                 <p>
                   {hotel.roomCapacity
-                    ? `Phong co suc chua toi da ${hotel.roomCapacity} nguoi, phu hop cho nhom ban va gia dinh.`
-                    : 'Thong tin chi tiet ve suc chua phong dang duoc cap nhat.'}
+                    ? `Phòng có sức chứa tối đa ${hotel.roomCapacity} người.`
+                    : 'Thông tin về chi tiết và sức chứa phòng đang được cập nhật.'}
                 </p>
               </>
             )}
@@ -304,14 +310,14 @@ export default function HotelDetailPage() {
             {reviewCount > 0 ? ` (${reviewCount})` : ''}
           </p>
           <p className="hotel-detail-booking-meta">
-            {hotel.roomCapacity ? `Suc chua: ${hotel.roomCapacity} nguoi/phong` : 'Suc chua: Dang cap nhat'}
+            {hotel.roomCapacity ? `Sức chứa: ${hotel.roomCapacity} người/phòng` : 'Sức chứa: Đang cập nhật'}
           </p>
-          {hotel.hotelTypeName ? <p className="hotel-detail-booking-meta">Loai hinh: {hotel.hotelTypeName}</p> : null}
+          {hotel.hotelTypeName ? <p className="hotel-detail-booking-meta">Loại hình: {hotel.hotelTypeName}</p> : null}
           {hotel.destinationName ? (
-            <p className="hotel-detail-booking-meta">Khu vuc: {hotel.destinationName}</p>
+            <p className="hotel-detail-booking-meta">Khu vực: {hotel.destinationName}</p>
           ) : null}
           <button type="button" className="hotel-detail-book-btn" onClick={openBookingForm}>
-            Dat ngay
+            Đặt ngay
           </button>
           {bookingLoginError ? <p className="error">{bookingLoginError}</p> : null}
         </aside>
@@ -320,13 +326,13 @@ export default function HotelDetailPage() {
       {showBookingForm ? (
         <form className="hotel-booking-form-wrap" onSubmit={submitHotelBooking}>
           <div className="hotel-booking-form-left panel">
-            <h2>Thong tin khach luu tru chinh</h2>
+            <h2>Thông tin khách lưu trú</h2>
             <div className="hotel-booking-field">
-              <label>Ho va ten*</label>
+              <label>Họ và tên*</label>
               <p className="hotel-booking-readonly-value">{bookingForm.contactName || 'Vui lòng đăng nhập để đặt phòng'}</p>
             </div>
             <div className="hotel-booking-field">
-              <label>So dien thoai*</label>
+              <label>Số điện thoại*</label>
               <p className="hotel-booking-readonly-value">{bookingForm.contactPhone || 'Vui lòng đăng nhập để đặt phòng'}</p>
             </div>
             <div className="hotel-booking-field">
@@ -352,10 +358,10 @@ export default function HotelDetailPage() {
               </div>
             </div>
             <div className="hotel-booking-field">
-              <label>Ghi chu dac biet (neu co)</label>
+              <label>Ghi chú (nếu có)</label>
               <textarea
                 rows={3}
-                placeholder="Phong khong hut thuoc, giuong doi/don, gan thang may..."
+                placeholder="Ghi chú đặc biệt để nhân viên khách sạn có thể kiểm tra giúp bạn..."
                 value={bookingForm.note}
                 onChange={(e) => onBookingFieldChange('note', e.target.value)}
               />
@@ -371,28 +377,53 @@ export default function HotelDetailPage() {
                 }
               />
             </div>
+            <div className="hotel-booking-field">
+              <label>Phương thức thanh toán*</label>
+              <div className="tour-payment-method-options">
+                <label>
+                  <input
+                    type="radio"
+                    name="hotel-payment-method"
+                    value="cod"
+                    checked={bookingForm.paymentMethod === 'cod'}
+                    onChange={(e) => onBookingFieldChange('paymentMethod', e.target.value)}
+                  />
+                  Trực tiếp (COD)
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="hotel-payment-method"
+                    value="vnpay"
+                    checked={bookingForm.paymentMethod === 'vnpay'}
+                    onChange={(e) => onBookingFieldChange('paymentMethod', e.target.value)}
+                  />
+                  Thanh toán online (VNPAY)
+                </label>
+              </div>
+            </div>
             {bookingError ? <p className="error">{bookingError}</p> : null}
             {bookingSuccess ? <p className="hotel-booking-success">{bookingSuccess}</p> : null}
           </div>
 
           <aside className="hotel-booking-summary panel">
             <p className="hotel-booking-summary-stars">{'★'.repeat(stars)}</p>
-            <h3>{hotel.name || 'Khach san'}</h3>
-            <p className="muted">{hotel.address || 'Dang cap nhat dia chi'}</p>
+            <h3>{hotel.name || 'Khách sạn'}</h3>
+            <p className="muted">{hotel.address || 'Đang cập nhật địa chỉ'}</p>
             {mainImage ? <img src={mainImage} alt={hotel.name} className="hotel-booking-summary-image" /> : null}
             <ul>
-              <li>{hotel.roomCapacity ? `${hotel.roomCapacity} nguoi/phong` : 'Suc chua: Dang cap nhat'}</li>
-              <li>{`${roomCount} phong x ${nights} dem`}</li>
-              <li>{`${guestCount} khach`}</li>
-              <li>Gom an sang</li>
-              <li>{hotel.hotelTypeName || 'Phong tieu chuan'}</li>
+              <li>{hotel.roomCapacity ? `${hotel.roomCapacity} người/phòng` : 'Sức chauws đang cập nhật'}</li>
+              <li>{`${roomCount} phòng x ${nights} đêm`}</li>
+              <li>{`${guestCount} khách`}</li>
+              <li>Gồm ăn sáng</li>
+              <li>{hotel.hotelTypeName || 'Phòng tiêu chuẩn'}</li>
             </ul>
             <div className="hotel-booking-summary-total">
-              <span>Tong tien</span>
+              <span>Tổng tiền</span>
               <strong>{formatPrice(totalAmount)}</strong>
             </div>
             <button type="submit" className="hotel-detail-book-btn" disabled={bookingSubmitting}>
-              {bookingSubmitting ? 'Dang dat...' : 'Xac nhan dat phong'}
+              {bookingSubmitting ? 'Đang đặt...' : 'Xác nhận đặt phòng'}
             </button>
           </aside>
         </form>
@@ -403,7 +434,7 @@ export default function HotelDetailPage() {
           <button
             type="button"
             className="hotel-image-viewer-close"
-            aria-label="Dong xem anh"
+            aria-label="Đóng ảnh"
             onClick={closeViewer}
           >
             ×
@@ -411,7 +442,7 @@ export default function HotelDetailPage() {
           <button
             type="button"
             className="hotel-image-viewer-nav hotel-image-viewer-nav--prev"
-            aria-label="Anh truoc"
+            aria-label="Ảnh trước"
             onClick={(e) => {
               e.stopPropagation()
               prevViewerImage()
@@ -437,7 +468,7 @@ export default function HotelDetailPage() {
           <button
             type="button"
             className="hotel-image-viewer-nav hotel-image-viewer-nav--next"
-            aria-label="Anh sau"
+            aria-label="Ảnh sau"
             onClick={(e) => {
               e.stopPropagation()
               nextViewerImage()

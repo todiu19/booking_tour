@@ -15,6 +15,7 @@ function formatDateTime(value) {
 export default function BookingDetailPage() {
   const { id } = useParams()
   const [booking, setBooking] = useState(null)
+  const [tourThumbnail, setTourThumbnail] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -38,52 +39,87 @@ export default function BookingDetailPage() {
     }
   }, [id])
 
-  if (loading) return <p>Loading booking detail...</p>
+  useEffect(() => {
+    let active = true
+    async function loadTourThumbnail() {
+      if (!booking?.tourId) {
+        setTourThumbnail('')
+        return
+      }
+      try {
+        const tour = await api.getTourById(booking.tourId)
+        if (!active) return
+        setTourThumbnail(String(tour?.thumbnailUrl || '').trim())
+      } catch {
+        if (active) setTourThumbnail('')
+      }
+    }
+    loadTourThumbnail()
+    return () => {
+      active = false
+    }
+  }, [booking?.tourId])
+
+  if (loading) return <p>Đang tải chi tiết đơn đặt...</p>
   if (error) return <p className="error">{error}</p>
-  if (!booking) return <p>Booking not found.</p>
+  if (!booking) return <p>Không tìm thấy đơn đặt.</p>
 
   return (
-    <section className="stack">
-      <h1>Booking Detail</h1>
-      <article className="panel stack">
-        <p>
-          <strong>Tour:</strong> {booking.tourName || 'N/A'}
-        </p>
-        <p>
-          <strong>Booking code:</strong> {booking.bookingCode}
-        </p>
-        <p>
-          <strong>Booked at:</strong> {formatDateTime(booking.createdAt)}
-        </p>
-        <p>
-          <strong>Total:</strong> {formatPrice(booking.totalAmount)}
-        </p>
-        <p>
-          <strong>Payment status:</strong> {booking.paymentStatus}
-        </p>
-        <p>
-          <strong>Booking status:</strong> {booking.bookingStatus}
-        </p>
-        <p>
-          <strong>Pax:</strong> {booking.adultCount} adult, {booking.childCount} child
-        </p>
-        <p>
-          <strong>Contact:</strong> {booking.contactName} - {booking.contactPhone} - {booking.contactEmail}
-        </p>
-        {booking.note ? (
+    <section className="stack booking-detail-page">
+      <div className="booking-detail-topbar">
+        <Link className="button button-secondary booking-detail-back-button" to="/bookings" aria-label="Quay lại danh sách đơn">
+          <i className="fa-solid fa-arrow-left" aria-hidden="true" />
+        </Link>
+      </div>
+      <h1>Chi tiết đơn đặt</h1>
+      <article className="panel booking-detail-card">
+        <div className="booking-detail-media">
+          <div className="booking-detail-thumb-wrap">
+            <img
+              className="booking-detail-thumb"
+              src={tourThumbnail || 'https://placehold.co/800x600?text=No+Image'}
+              alt={booking.tourName || 'Tour thumbnail'}
+              loading="lazy"
+            />
+          </div>
+        </div>
+        <div className="booking-detail-info stack">
           <p>
-            <strong>Note:</strong> {booking.note}
+            <strong>Tour:</strong> {booking.tourName || 'Chưa có'}
           </p>
-        ) : null}
-        <div className="actions">
-          {booking.canViewInvoice && booking.invoiceId ? (
-            <Link className="button" to={`/invoices/${booking.invoiceId}`}>
-              View invoice
-            </Link>
+          <p>
+            <strong>Mã đơn:</strong> {booking.bookingCode}
+          </p>
+          <p>
+            <strong>Thời gian đặt:</strong> {formatDateTime(booking.createdAt)}
+          </p>
+          <p>
+            <strong>Tổng tiền:</strong> {formatPrice(booking.totalAmount)}
+          </p>
+          <p>
+            <strong>Thanh toán:</strong> {booking.paymentStatus}
+          </p>
+          <p>
+            <strong>Trạng thái đơn:</strong> {booking.bookingStatus}
+          </p>
+          <p>
+            <strong>Số khách:</strong> {booking.adultCount} người lớn, {booking.childCount} trẻ em
+          </p>
+          <p>
+            <strong>Liên hệ:</strong> {booking.contactName} - {booking.contactPhone} - {booking.contactEmail}
+          </p>
+          {booking.note ? (
+            <p>
+              <strong>Ghi chú:</strong> {booking.note}
+            </p>
           ) : null}
-          <Link className="button button-secondary" to="/bookings">
-            Back to bookings
-          </Link>
+          <div className="actions">
+            {booking.canViewInvoice && booking.invoiceId ? (
+              <Link className="button" to={`/invoices/${booking.invoiceId}`}>
+                Xem hóa đơn
+              </Link>
+            ) : null}
+          </div>
         </div>
       </article>
     </section>

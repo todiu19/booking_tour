@@ -88,12 +88,14 @@ CREATE TABLE destinations (
     province VARCHAR(150),
     country VARCHAR(150) DEFAULT 'Viet Nam',
     image_url VARCHAR(500) NULL,
+    description TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_destination_name_province_country (name, province, country)
 );
 
 -- Nếu DB đã tạo từ schema cũ, chạy thêm:
 -- ALTER TABLE destinations ADD COLUMN image_url VARCHAR(500) NULL AFTER country;
+-- ALTER TABLE destinations ADD COLUMN description TEXT NULL AFTER image_url;
 
 -- 7) TOUR_DESTINATIONS (many-to-many)
 CREATE TABLE tour_destinations (
@@ -125,6 +127,7 @@ CREATE TABLE hotels (
     description TEXT NULL,
     base_price DECIMAL(12,2) NULL,
     room_capacity INT UNSIGNED NULL,
+    status ENUM('active','blocked') NOT NULL DEFAULT 'active',
     destination_id BIGINT UNSIGNED NULL,
     hotel_type_id BIGINT UNSIGNED NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -245,6 +248,7 @@ CREATE TABLE hotel_bookings (
     check_out_date DATE NOT NULL,
     room_count INT UNSIGNED NOT NULL DEFAULT 1,
     guest_count INT UNSIGNED NOT NULL DEFAULT 1,
+    payment_method ENUM('vnpay','cod') NOT NULL DEFAULT 'cod',
     total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
     booking_status ENUM('pending','confirmed','cancelled','completed') NOT NULL DEFAULT 'pending',
     payment_status ENUM('unpaid','paid','failed','refunded') NOT NULL DEFAULT 'unpaid',
@@ -276,7 +280,8 @@ ALTER TABLE hotel_reviews
 -- 13) PAYMENTS
 CREATE TABLE payments (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    booking_id BIGINT UNSIGNED NOT NULL,
+    booking_id BIGINT UNSIGNED NULL,
+    hotel_booking_id BIGINT UNSIGNED NULL,
     provider ENUM('vnpay','cod') NOT NULL,
     transaction_ref VARCHAR(100) NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
@@ -288,10 +293,14 @@ CREATE TABLE payments (
     UNIQUE KEY uq_payments_transaction_ref (transaction_ref),
     CONSTRAINT fk_payment_booking
       FOREIGN KEY (booking_id) REFERENCES bookings(id)
+      ON DELETE CASCADE,
+    CONSTRAINT fk_payment_hotel_booking
+      FOREIGN KEY (hotel_booking_id) REFERENCES hotel_bookings(id)
       ON DELETE CASCADE
 );
 
 CREATE INDEX idx_payments_booking_status ON payments (booking_id, payment_status);
+CREATE INDEX idx_payments_hotel_booking_status ON payments (hotel_booking_id, payment_status);
 -- Nếu DB cũ còn provider enum có 'momo'/'paypal' thì chạy:
 -- ALTER TABLE payments
 --   MODIFY provider ENUM('vnpay','cod') NOT NULL;
@@ -300,7 +309,8 @@ CREATE INDEX idx_payments_booking_status ON payments (booking_id, payment_status
 CREATE TABLE invoices (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     invoice_no VARCHAR(30) NOT NULL,
-    booking_id BIGINT UNSIGNED NOT NULL,
+    booking_id BIGINT UNSIGNED NULL,
+    hotel_booking_id BIGINT UNSIGNED NULL,
     user_id BIGINT UNSIGNED NOT NULL,
     payment_id BIGINT UNSIGNED NULL,
     issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -316,8 +326,12 @@ CREATE TABLE invoices (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_invoices_invoice_no (invoice_no),
     UNIQUE KEY uq_invoices_booking (booking_id),
+    UNIQUE KEY uq_invoices_hotel_booking (hotel_booking_id),
     CONSTRAINT fk_invoice_booking
       FOREIGN KEY (booking_id) REFERENCES bookings(id)
+      ON DELETE RESTRICT,
+    CONSTRAINT fk_invoice_hotel_booking
+      FOREIGN KEY (hotel_booking_id) REFERENCES hotel_bookings(id)
       ON DELETE RESTRICT,
     CONSTRAINT fk_invoice_user
       FOREIGN KEY (user_id) REFERENCES users(id)

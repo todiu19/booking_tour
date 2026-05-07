@@ -15,7 +15,7 @@ export default function DestinationsPage() {
     async function load() {
       try {
         setLoading(true)
-        const result = await api.getDestinations({ page, size: 8, keyword })
+        const result = await api.getDestinations({ page, size: 9, keyword })
         if (active) setData(result)
       } catch (e) {
         if (active) setError(e.message)
@@ -30,11 +30,11 @@ export default function DestinationsPage() {
   }, [keyword, page])
 
   return (
-    <section className="stack">
-      <h1>Destinations</h1>
+    <section className="stack destinations-page">
+      <h1>Các điểm du lịch phổ biến</h1>
       <input
         className="search-input"
-        placeholder="Search destination..."
+        placeholder="Tìm điểm đến..."
         value={keyword}
         onChange={(e) => {
           setPage(0)
@@ -42,7 +42,7 @@ export default function DestinationsPage() {
         }}
       />
 
-      {loading && <p>Loading destinations...</p>}
+      {loading && <p>Đang tải...</p>}
       {error && <p className="error">{error}</p>}
 
       <div className="grid">
@@ -51,7 +51,7 @@ export default function DestinationsPage() {
         ))}
       </div>
 
-      {!loading && (data?.content || []).length === 0 ? <p>No destination found.</p> : null}
+      {!loading && (data?.content || []).length === 0 ? <p>Không tìm thấy điểm đến phù hợp.</p> : null}
 
       <Pagination page={data?.page || 0} totalPages={data?.totalPages || 0} onPageChange={setPage} />
     </section>

@@ -8,22 +8,31 @@ import com.project.bookingtour.common.dto.response.PageResponse;
 import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
 import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
+import com.project.bookingtour.common.enums.PaymentStatus;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.domain.entity.Booking;
 import com.project.bookingtour.domain.entity.Invoice;
+import com.project.bookingtour.domain.entity.Payment;
 import com.project.bookingtour.domain.entity.Tour;
+import com.project.bookingtour.domain.entity.TourDeparture;
 import com.project.bookingtour.domain.entity.User;
 import com.project.bookingtour.domain.repository.BookingRepository;
 import com.project.bookingtour.domain.repository.InvoiceRepository;
+import com.project.bookingtour.domain.repository.PaymentRepository;
+import com.project.bookingtour.domain.repository.ReviewRepository;
+import com.project.bookingtour.domain.repository.TourDepartureRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
 import com.project.bookingtour.domain.repository.UserRepository;
 import com.project.bookingtour.payment.service.PaymentService;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +50,10 @@ public class BookingService {
     private final UserRepository userRepository;
     private final TourRepository tourRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
+    private final TourDepartureRepository tourDepartureRepository;
+    private final ReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<BookingResponse> listMyBookings(Long userId, int page, int size) {
@@ -56,6 +68,15 @@ public class BookingService {
                         : invoiceRepository.findByBooking_IdIn(bookingIds).stream()
                                 .collect(Collectors.toMap(i -> i.getBooking().getId(), i -> i));
 
+        List<Long> tourIds =
+                result.getContent().stream()
+                        .map(b -> b.getTour() != null ? b.getTour().getId() : null)
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .toList();
+        Map<Long, List<LocalDate>> departuresByTour = loadDeparturesByTour(tourIds);
+        Set<Long> reviewedTourIds = loadReviewedTourIds(userId, tourIds);
+
         Page<BookingResponse> mapped =
                 result.map(
                         b -> {
@@ -65,6 +86,14 @@ public class BookingService {
                                 r.setInvoiceId(inv.getId());
                             }
                             r.setCanViewInvoice(b.getPaymentStatus() == BookingPaymentStatus.paid);
+                            Long tourId = b.getTour() != null ? b.getTour().getId() : null;
+                            r.setDepartureDate(
+                                    pickEffectiveDepartureDate(
+                                            departuresByTour.get(tourId),
+                                            b.getCreatedAt() != null
+                                                    ? b.getCreatedAt().toLocalDate()
+                                                    : null));
+                            r.setReviewed(tourId != null && reviewedTourIds.contains(tourId));
                             return r;
                         });
         return PageResponse.fromPage(mapped);
@@ -79,7 +108,59 @@ public class BookingService {
         BookingResponse response = BookingResponse.from(booking);
         invoiceRepository.findByBooking_Id(booking.getId()).ifPresent(inv -> response.setInvoiceId(inv.getId()));
         response.setCanViewInvoice(booking.getPaymentStatus() == BookingPaymentStatus.paid);
+        Long tourId = booking.getTour() != null ? booking.getTour().getId() : null;
+        if (tourId != null) {
+            List<LocalDate> dates =
+                    tourDepartureRepository.findByTour_IdOrderByDepartureDateAsc(tourId).stream()
+                            .map(TourDeparture::getDepartureDate)
+                            .toList();
+            response.setDepartureDate(
+                    pickEffectiveDepartureDate(
+                            dates,
+                            booking.getCreatedAt() != null
+                                    ? booking.getCreatedAt().toLocalDate()
+                                    : null));
+            response.setReviewed(reviewRepository.existsByUser_IdAndTour_Id(userId, tourId));
+        }
         return response;
+    }
+
+    private Map<Long, List<LocalDate>> loadDeparturesByTour(List<Long> tourIds) {
+        if (tourIds.isEmpty()) {
+            return Map.of();
+        }
+        return tourDepartureRepository.findByTour_IdInOrderByDepartureDateAsc(tourIds).stream()
+                .filter(td -> td.getTour() != null && td.getDepartureDate() != null)
+                .collect(
+                        Collectors.groupingBy(
+                                td -> td.getTour().getId(),
+                                Collectors.mapping(TourDeparture::getDepartureDate, Collectors.toList())));
+    }
+
+    private Set<Long> loadReviewedTourIds(Long userId, List<Long> tourIds) {
+        if (tourIds.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(reviewRepository.findReviewedTourIdsByUser(userId, tourIds));
+    }
+
+    /**
+     * Heuristic chọn ngày khởi hành đại diện cho booking khi schema chưa lưu rõ user đặt chuyến nào:
+     * lấy ngày khởi hành sớm nhất >= ngày tạo booking. Nếu không có (booking đặt sau khi mọi chuyến
+     * đã xảy ra), trả về ngày khởi hành mới nhất. Trả về null nếu tour chưa có lịch.
+     */
+    private LocalDate pickEffectiveDepartureDate(List<LocalDate> sortedAscDates, LocalDate bookedOn) {
+        if (sortedAscDates == null || sortedAscDates.isEmpty()) {
+            return null;
+        }
+        if (bookedOn != null) {
+            for (LocalDate d : sortedAscDates) {
+                if (!d.isBefore(bookedOn)) {
+                    return d;
+                }
+            }
+        }
+        return sortedAscDates.get(sortedAscDates.size() - 1);
     }
 
     @Transactional
@@ -177,6 +258,14 @@ public class BookingService {
 
         booking.setBookingStatus(BookingStatus.cancelled);
         bookingRepository.save(booking);
+        List<Payment> payments = paymentRepository.findByBooking_Id(booking.getId());
+        for (Payment payment : payments) {
+            if (payment.getPaymentStatus() == PaymentStatus.pending) {
+                payment.setPaymentStatus(PaymentStatus.failed);
+                payment.setRawResponse("{\"cancelled\":true,\"source\":\"booking_cancel\"}");
+                paymentRepository.save(payment);
+            }
+        }
         return BookingResponse.from(booking);
     }
 

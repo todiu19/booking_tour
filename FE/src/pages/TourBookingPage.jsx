@@ -3,11 +3,11 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 
 function formatPrice(value) {
-  if (value == null) return 'N/A'
+  if (value == null) return 'Chưa có'
   return Number(value).toLocaleString('vi-VN') + ' VND'
 }
 function formatDate(value) {
-  if (!value) return 'N/A'
+  if (!value) return 'Chưa có'
   return new Date(value).toLocaleDateString('vi-VN')
 }
 
@@ -91,7 +91,7 @@ export default function TourBookingPage() {
         return
       }
 
-      setMessage(`Booking ${booking?.booking?.bookingCode || ''} created successfully`)
+      setMessage(`Đặt tour thành công. Mã đơn: ${booking?.booking?.bookingCode || ''}`)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -99,24 +99,24 @@ export default function TourBookingPage() {
     }
   }
 
-  if (loading) return <p>Loading booking form...</p>
+  if (loading) return <p>Đang tải biểu mẫu đặt tour...</p>
   if (error && !tour) return <p className="error">{error}</p>
-  if (!tour) return <p>Tour not found.</p>
+  if (!tour) return <p>Không tìm thấy tour.</p>
   const firstDepartureDate = Array.isArray(tour.departureDates) && tour.departureDates.length > 0 ? tour.departureDates[0] : null
 
   return (
     <section className="stack">
       <div className="actions">
         <Link className="button button-secondary inline-button" to={`/tours/${id}`}>
-          Back to tour detail
+          Quay lại chi tiết tour
         </Link>
       </div>
       <div className="booking-layout">
         <section className="panel stack">
-          <h2>Contact for reservations</h2>
+          <h2>Thông tin liên hệ đặt tour</h2>
           <form onSubmit={submitBooking} className="stack">
             <label>
-              Contact name
+              Họ và tên
               <input
                 value={bookingForm.contactName}
                 onChange={(e) => setBookingForm((p) => ({ ...p, contactName: e.target.value }))}
@@ -124,7 +124,7 @@ export default function TourBookingPage() {
               />
             </label>
             <label>
-              Contact phone
+              Số điện thoại
               <input
                 value={bookingForm.contactPhone}
                 onChange={(e) => setBookingForm((p) => ({ ...p, contactPhone: e.target.value }))}
@@ -132,7 +132,7 @@ export default function TourBookingPage() {
               />
             </label>
             <label>
-              Contact email
+              Email
               <input
                 type="email"
                 value={bookingForm.contactEmail}
@@ -142,7 +142,7 @@ export default function TourBookingPage() {
             </label>
             <div className="filters booking-filters">
               <label>
-                Adult count
+                Người lớn
                 <input
                   type="number"
                   min="1"
@@ -152,7 +152,7 @@ export default function TourBookingPage() {
                 />
               </label>
               <label>
-                Child count
+                Trẻ em
                 <input
                   type="number"
                   min="0"
@@ -163,7 +163,7 @@ export default function TourBookingPage() {
               </label>
             </div>
             <label>
-              Payment method
+              Phương thức thanh toán
               <select
                 value={bookingForm.provider}
                 onChange={(e) => setBookingForm((p) => ({ ...p, provider: e.target.value }))}
@@ -173,7 +173,7 @@ export default function TourBookingPage() {
               </select>
             </label>
             <label>
-              Note
+              Ghi chú
               <input
                 value={bookingForm.note}
                 onChange={(e) => setBookingForm((p) => ({ ...p, note: e.target.value }))}
@@ -184,30 +184,30 @@ export default function TourBookingPage() {
 
         <section className="stack">
           <article className="panel stack">
-            <h2>Tour Information</h2>
+            <h2>Thông tin tour</h2>
             {tour.imageUrls?.[0] ? (
               <img src={tour.imageUrls[0]} alt={tour.name} className="detail-image" />
             ) : (
-              <div className="detail-image card-image-fallback">No image</div>
+              <div className="detail-image card-image-fallback">Không có ảnh</div>
             )}
             <p>
               <strong>{tour.name}</strong>
             </p>
-            <p>Ngay khoi hanh: {formatDate(firstDepartureDate)}</p>
-            <p>Duration: {tour.durationDays} days</p>
-            <p>{tour.description || 'No description.'}</p>
+            <p>Ngày khởi hành: {formatDate(firstDepartureDate)}</p>
+            <p>Thời lượng: {tour.durationDays} ngày</p>
+            <p>{tour.description || 'Chưa có mô tả.'}</p>
           </article>
           <article className="panel stack">
-            <h2>Total Cost</h2>
+            <h2>Tổng chi phí</h2>
             <p>
-              Pax: {Number(bookingForm.adultCount || 0) + Number(bookingForm.childCount || 0)} (
-              {bookingForm.adultCount} adult, {bookingForm.childCount} child)
+              Số khách: {Number(bookingForm.adultCount || 0) + Number(bookingForm.childCount || 0)} (
+              {bookingForm.adultCount} người lớn, {bookingForm.childCount} trẻ em)
             </p>
             <p>
               <strong>{formatPrice(totalAmount)}</strong>
             </p>
             <button className="button inline-button" type="button" disabled={bookingLoading} onClick={submitBooking}>
-              {bookingLoading ? 'Processing...' : 'Book'}
+              {bookingLoading ? 'Đang xử lý...' : 'Đặt tour'}
             </button>
             {message ? <p className="success">{message}</p> : null}
             {error ? <p className="error">{error}</p> : null}

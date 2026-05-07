@@ -2,6 +2,7 @@ package com.project.bookingtour.domain.entity;
 
 import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
+import com.project.bookingtour.common.enums.PaymentProvider;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -78,6 +79,10 @@ public class HotelBooking {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 20)
     private BookingPaymentStatus paymentStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false, length = 20)
+    private PaymentProvider paymentMethod;
 
     @Column(columnDefinition = "TEXT")
     private String note;

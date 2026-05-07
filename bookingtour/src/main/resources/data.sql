@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS hotels (
     description TEXT NULL,
     base_price DECIMAL(12,2) NULL,
     room_capacity INT UNSIGNED NULL,
+    status ENUM('active','blocked') NOT NULL DEFAULT 'active',
     destination_id BIGINT UNSIGNED NULL,
     hotel_type_id BIGINT UNSIGNED NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -159,6 +160,22 @@ SET @sql_add_hotel_room_capacity := IF(
 PREPARE stmt_add_hotel_room_capacity FROM @sql_add_hotel_room_capacity;
 EXECUTE stmt_add_hotel_room_capacity;
 DEALLOCATE PREPARE stmt_add_hotel_room_capacity;
+
+SET @has_hotel_status_col := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'hotels'
+      AND COLUMN_NAME = 'status'
+);
+SET @sql_add_hotel_status_col := IF(
+    @has_hotel_status_col = 0,
+    'ALTER TABLE hotels ADD COLUMN status ENUM(''active'',''blocked'') NOT NULL DEFAULT ''active'' AFTER room_capacity',
+    'SELECT 1'
+);
+PREPARE stmt_add_hotel_status_col FROM @sql_add_hotel_status_col;
+EXECUTE stmt_add_hotel_status_col;
+DEALLOCATE PREPARE stmt_add_hotel_status_col;
 
 SET @has_hotel_destination_col := (
     SELECT COUNT(*)
@@ -327,6 +344,7 @@ CREATE TABLE IF NOT EXISTS hotel_bookings (
     check_out_date DATE NOT NULL,
     room_count INT UNSIGNED NOT NULL DEFAULT 1,
     guest_count INT UNSIGNED NOT NULL DEFAULT 1,
+    payment_method ENUM('vnpay','cod') NOT NULL DEFAULT 'cod',
     total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
     booking_status ENUM('pending','confirmed','cancelled','completed') NOT NULL DEFAULT 'pending',
     payment_status ENUM('unpaid','paid','failed','refunded') NOT NULL DEFAULT 'unpaid',
@@ -389,6 +407,154 @@ SET @sql_add_hotel_bookings_date_range_idx := IF(
 PREPARE stmt_add_hotel_bookings_date_range_idx FROM @sql_add_hotel_bookings_date_range_idx;
 EXECUTE stmt_add_hotel_bookings_date_range_idx;
 DEALLOCATE PREPARE stmt_add_hotel_bookings_date_range_idx;
+
+SET @has_hotel_bookings_payment_method_col := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'hotel_bookings'
+      AND COLUMN_NAME = 'payment_method'
+);
+SET @sql_add_hotel_bookings_payment_method_col := IF(
+    @has_hotel_bookings_payment_method_col = 0,
+    'ALTER TABLE hotel_bookings ADD COLUMN payment_method ENUM(''vnpay'',''cod'') NOT NULL DEFAULT ''cod'' AFTER guest_count',
+    'SELECT 1'
+);
+PREPARE stmt_add_hotel_bookings_payment_method_col FROM @sql_add_hotel_bookings_payment_method_col;
+EXECUTE stmt_add_hotel_bookings_payment_method_col;
+DEALLOCATE PREPARE stmt_add_hotel_bookings_payment_method_col;
+
+SET @has_payment_booking_nullable := (
+    SELECT IFNULL(IS_NULLABLE = 'YES', 0)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'payments'
+      AND COLUMN_NAME = 'booking_id'
+    LIMIT 1
+);
+SET @sql_payment_booking_nullable := IF(
+    @has_payment_booking_nullable = 0,
+    'ALTER TABLE payments MODIFY COLUMN booking_id BIGINT UNSIGNED NULL',
+    'SELECT 1'
+);
+PREPARE stmt_payment_booking_nullable FROM @sql_payment_booking_nullable;
+EXECUTE stmt_payment_booking_nullable;
+DEALLOCATE PREPARE stmt_payment_booking_nullable;
+
+SET @has_payment_hotel_booking_col := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'payments'
+      AND COLUMN_NAME = 'hotel_booking_id'
+);
+SET @sql_add_payment_hotel_booking_col := IF(
+    @has_payment_hotel_booking_col = 0,
+    'ALTER TABLE payments ADD COLUMN hotel_booking_id BIGINT UNSIGNED NULL AFTER booking_id',
+    'SELECT 1'
+);
+PREPARE stmt_add_payment_hotel_booking_col FROM @sql_add_payment_hotel_booking_col;
+EXECUTE stmt_add_payment_hotel_booking_col;
+DEALLOCATE PREPARE stmt_add_payment_hotel_booking_col;
+
+SET @has_idx_payments_hotel_booking_status := (
+    SELECT COUNT(*)
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'payments'
+      AND INDEX_NAME = 'idx_payments_hotel_booking_status'
+);
+SET @sql_add_idx_payments_hotel_booking_status := IF(
+    @has_idx_payments_hotel_booking_status = 0,
+    'CREATE INDEX idx_payments_hotel_booking_status ON payments (hotel_booking_id, payment_status)',
+    'SELECT 1'
+);
+PREPARE stmt_add_idx_payments_hotel_booking_status FROM @sql_add_idx_payments_hotel_booking_status;
+EXECUTE stmt_add_idx_payments_hotel_booking_status;
+DEALLOCATE PREPARE stmt_add_idx_payments_hotel_booking_status;
+
+SET @has_fk_payment_hotel_booking := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'payments'
+      AND CONSTRAINT_NAME = 'fk_payment_hotel_booking'
+      AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+SET @sql_add_fk_payment_hotel_booking := IF(
+    @has_fk_payment_hotel_booking = 0,
+    'ALTER TABLE payments ADD CONSTRAINT fk_payment_hotel_booking FOREIGN KEY (hotel_booking_id) REFERENCES hotel_bookings(id) ON DELETE CASCADE',
+    'SELECT 1'
+);
+PREPARE stmt_add_fk_payment_hotel_booking FROM @sql_add_fk_payment_hotel_booking;
+EXECUTE stmt_add_fk_payment_hotel_booking;
+DEALLOCATE PREPARE stmt_add_fk_payment_hotel_booking;
+
+SET @has_invoice_booking_nullable := (
+    SELECT IFNULL(IS_NULLABLE = 'YES', 0)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'invoices'
+      AND COLUMN_NAME = 'booking_id'
+    LIMIT 1
+);
+SET @sql_invoice_booking_nullable := IF(
+    @has_invoice_booking_nullable = 0,
+    'ALTER TABLE invoices MODIFY COLUMN booking_id BIGINT UNSIGNED NULL',
+    'SELECT 1'
+);
+PREPARE stmt_invoice_booking_nullable FROM @sql_invoice_booking_nullable;
+EXECUTE stmt_invoice_booking_nullable;
+DEALLOCATE PREPARE stmt_invoice_booking_nullable;
+
+SET @has_invoice_hotel_booking_col := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'invoices'
+      AND COLUMN_NAME = 'hotel_booking_id'
+);
+SET @sql_add_invoice_hotel_booking_col := IF(
+    @has_invoice_hotel_booking_col = 0,
+    'ALTER TABLE invoices ADD COLUMN hotel_booking_id BIGINT UNSIGNED NULL AFTER booking_id',
+    'SELECT 1'
+);
+PREPARE stmt_add_invoice_hotel_booking_col FROM @sql_add_invoice_hotel_booking_col;
+EXECUTE stmt_add_invoice_hotel_booking_col;
+DEALLOCATE PREPARE stmt_add_invoice_hotel_booking_col;
+
+SET @has_uq_invoices_hotel_booking := (
+    SELECT COUNT(*)
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'invoices'
+      AND INDEX_NAME = 'uq_invoices_hotel_booking'
+);
+SET @sql_add_uq_invoices_hotel_booking := IF(
+    @has_uq_invoices_hotel_booking = 0,
+    'CREATE UNIQUE INDEX uq_invoices_hotel_booking ON invoices (hotel_booking_id)',
+    'SELECT 1'
+);
+PREPARE stmt_add_uq_invoices_hotel_booking FROM @sql_add_uq_invoices_hotel_booking;
+EXECUTE stmt_add_uq_invoices_hotel_booking;
+DEALLOCATE PREPARE stmt_add_uq_invoices_hotel_booking;
+
+SET @has_fk_invoice_hotel_booking := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'invoices'
+      AND CONSTRAINT_NAME = 'fk_invoice_hotel_booking'
+      AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+SET @sql_add_fk_invoice_hotel_booking := IF(
+    @has_fk_invoice_hotel_booking = 0,
+    'ALTER TABLE invoices ADD CONSTRAINT fk_invoice_hotel_booking FOREIGN KEY (hotel_booking_id) REFERENCES hotel_bookings(id) ON DELETE RESTRICT',
+    'SELECT 1'
+);
+PREPARE stmt_add_fk_invoice_hotel_booking FROM @sql_add_fk_invoice_hotel_booking;
+EXECUTE stmt_add_fk_invoice_hotel_booking;
+DEALLOCATE PREPARE stmt_add_fk_invoice_hotel_booking;
 
 SET @hr_has_booking_col := (
     SELECT COUNT(*)
@@ -619,27 +785,44 @@ SELECT t.id, 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8', 1 F
 INSERT IGNORE INTO tour_images (tour_id, image_url, display_order)
 SELECT t.id, 'https://images.unsplash.com/photo-1501785888041-af3ef285b470', 1 FROM tours t WHERE t.code = 'VN-HCM-PLEI-12';
 
+-- Compatibility fix: ensure destinations.description exists.
+SET @has_destination_description_col := (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'destinations'
+      AND COLUMN_NAME = 'description'
+);
+SET @sql_add_destination_description := IF(
+    @has_destination_description_col = 0,
+    'ALTER TABLE destinations ADD COLUMN description TEXT NULL AFTER image_url',
+    'SELECT 1'
+);
+PREPARE stmt_add_destination_description FROM @sql_add_destination_description;
+EXECUTE stmt_add_destination_description;
+DEALLOCATE PREPARE stmt_add_destination_description;
+
 -- Sample destinations (re-runnable; matches unique constraint)
-INSERT IGNORE INTO destinations (name, province, country, image_url) VALUES
-('Đà Nẵng', 'Đà Nẵng', 'Viet Nam', 'https://images.unsplash.com/photo-1528127269322-539801943592'),
-('Hội An', 'Quảng Nam', 'Viet Nam', 'https://images.unsplash.com/photo-1526481280695-3c46925f49d5'),
-('Bà Nà Hills', 'Đà Nẵng', 'Viet Nam', 'https://images.unsplash.com/photo-1548013146-72479768bada'),
-('Hạ Long', 'Quảng Ninh', 'Viet Nam', 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8'),
-('Cát Bà', 'Hải Phòng', 'Viet Nam', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'),
-('Cần Thơ', 'Cần Thơ', 'Viet Nam', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b'),
-('Sapa', 'Lào Cai', 'Viet Nam', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb'),
-('Fansipan', 'Lào Cai', 'Viet Nam', 'https://images.unsplash.com/photo-1528127269322-539801943592'),
-('Phú Quốc', 'Kiên Giang', 'Viet Nam', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb'),
-('Huế', 'Thừa Thiên Huế', 'Viet Nam', 'https://images.unsplash.com/photo-1472396961693-142e6e269027'),
-('Quy Nhơn', 'Bình Định', 'Viet Nam', 'https://images.unsplash.com/photo-1501785888041-af3ef285b470'),
-('Phú Yên', 'Phú Yên', 'Viet Nam', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'),
-('Nha Trang', 'Khánh Hòa', 'Viet Nam', 'https://images.unsplash.com/photo-1469474968028-56623f02e42e'),
-('Đà Lạt', 'Lâm Đồng', 'Viet Nam', 'https://images.unsplash.com/photo-1493558103817-58b2924bce98'),
-('Phan Thiết', 'Bình Thuận', 'Viet Nam', 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21'),
-('Ninh Bình', 'Ninh Bình', 'Viet Nam', 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee'),
-('Côn Đảo', 'Bà Rịa - Vũng Tàu', 'Viet Nam', 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8'),
-('Gia Lai', 'Gia Lai', 'Viet Nam', 'https://images.unsplash.com/photo-1501785888041-af3ef285b470'),
-('Kon Tum', 'Kon Tum', 'Viet Nam', 'https://images.unsplash.com/photo-1469474968028-56623f02e42e');
+INSERT IGNORE INTO destinations (name, province, country, image_url, description) VALUES
+('Đà Nẵng', 'Đà Nẵng', 'Viet Nam', 'https://images.unsplash.com/photo-1528127269322-539801943592', 'Thanh pho bien hien dai voi bai bien My Khe va cau Rong.'),
+('Hội An', 'Quảng Nam', 'Viet Nam', 'https://images.unsplash.com/photo-1526481280695-3c46925f49d5', 'Pho co ven song Hoai voi den long va kien truc co kinh.'),
+('Bà Nà Hills', 'Đà Nẵng', 'Viet Nam', 'https://images.unsplash.com/photo-1548013146-72479768bada', 'Khu du lich tren nui noi tieng voi Cau Vang va khi hau mat me.'),
+('Hạ Long', 'Quảng Ninh', 'Viet Nam', 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8', 'Di san thien nhien the gioi voi hang nghin dao da voi doc dao.'),
+('Cát Bà', 'Hải Phòng', 'Viet Nam', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', 'Dao lon voi canh dep bien va rung quoc gia.'),
+('Cần Thơ', 'Cần Thơ', 'Viet Nam', 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b', 'Trung tam mien Tay voi cho noi Cai Rang va van hoa song nuoc.'),
+('Sapa', 'Lào Cai', 'Viet Nam', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb', 'Thi tran nui voi ruong bac thang va khi hau se lanh quanh nam.'),
+('Fansipan', 'Lào Cai', 'Viet Nam', 'https://images.unsplash.com/photo-1528127269322-539801943592', 'Noc nha Dong Duong voi canh quan hung vi cua day Hoang Lien Son.'),
+('Phú Quốc', 'Kiên Giang', 'Viet Nam', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb', 'Dao ngoc noi tieng voi bai bien dep va he thong resort nghi duong.'),
+('Huế', 'Thừa Thiên Huế', 'Viet Nam', 'https://images.unsplash.com/photo-1472396961693-142e6e269027', 'Co do voi quan the di tich nha Nguyen va am thuc dac sac.'),
+('Quy Nhơn', 'Bình Định', 'Viet Nam', 'https://images.unsplash.com/photo-1501785888041-af3ef285b470', 'Thanh pho bien yen binh voi Eo Gio va Ky Co.'),
+('Phú Yên', 'Phú Yên', 'Viet Nam', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', 'Vung dat ven bien hoang so voi Ganh Da Dia noi tieng.'),
+('Nha Trang', 'Khánh Hòa', 'Viet Nam', 'https://images.unsplash.com/photo-1469474968028-56623f02e42e', 'Diem den bien du lich soi dong voi nhieu dao dep va dich vu lan bien.'),
+('Đà Lạt', 'Lâm Đồng', 'Viet Nam', 'https://images.unsplash.com/photo-1493558103817-58b2924bce98', 'Thanh pho ngan hoa, khi hau mat me va phong canh doi nui lang man.'),
+('Phan Thiết', 'Bình Thuận', 'Viet Nam', 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21', 'Noi bat voi Mui Ne, doi cat va am thuc hai san tuoi ngon.'),
+('Ninh Bình', 'Ninh Bình', 'Viet Nam', 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee', 'Diem den noi tieng voi Trang An, Tam Coc va canh quan non nuoc huu tinh.'),
+('Côn Đảo', 'Bà Rịa - Vũng Tàu', 'Viet Nam', 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8', 'Quan dao xa bo voi bien xanh cat trang va dau an lich su.'),
+('Gia Lai', 'Gia Lai', 'Viet Nam', 'https://images.unsplash.com/photo-1501785888041-af3ef285b470', 'Vung dat cao nguyen voi bien ho va van hoa cong chieng Tay Nguyen.'),
+('Kon Tum', 'Kon Tum', 'Viet Nam', 'https://images.unsplash.com/photo-1469474968028-56623f02e42e', 'Diem den Tay Nguyen voi nha rong, cau treo va ban lang dan toc.');
 
 -- Tour ↔ destination links (re-runnable via primary key)
 INSERT IGNORE INTO tour_destinations (tour_id, destination_id, day_number)

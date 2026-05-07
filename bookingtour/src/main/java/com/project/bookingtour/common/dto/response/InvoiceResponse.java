@@ -11,6 +11,7 @@ public class InvoiceResponse {
     private Long id;
     private String invoiceNo;
     private Long bookingId;
+    private Long hotelBookingId;
     private Long userId;
     private Long paymentId;
     private LocalDateTime issuedAt;
@@ -33,6 +34,7 @@ public class InvoiceResponse {
         r.setId(inv.getId());
         r.setInvoiceNo(inv.getInvoiceNo());
         r.setBookingId(inv.getBooking() != null ? inv.getBooking().getId() : null);
+        r.setHotelBookingId(inv.getHotelBooking() != null ? inv.getHotelBooking().getId() : null);
         r.setUserId(inv.getUser() != null ? inv.getUser().getId() : null);
         r.setPaymentId(inv.getPayment() != null ? inv.getPayment().getId() : null);
         r.setIssuedAt(inv.getIssuedAt());

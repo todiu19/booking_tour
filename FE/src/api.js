@@ -173,6 +173,9 @@ export const api = {
   getDashboardSummary() {
     return request('/dashboard')
   },
+  getDashboardMonthly(months = 12) {
+    return request(`/dashboard/monthly${toQueryString({ months })}`)
+  },
   adminListUsers(page = 0, size = 20) {
     return request(`/admin/users${toQueryString({ page, size })}`)
   },
@@ -187,6 +190,12 @@ export const api = {
   },
   adminBlockUser(id) {
     return request(`/admin/users/${id}/block`, {
+      method: 'PUT',
+      body: JSON.stringify({}),
+    })
+  },
+  adminUnblockUser(id) {
+    return request(`/admin/users/${id}/unblock`, {
       method: 'PUT',
       body: JSON.stringify({}),
     })
@@ -212,6 +221,39 @@ export const api = {
       body: JSON.stringify({}),
     })
   },
+  adminPublishTour(id) {
+    return request(`/admin/tour/${id}/publish`, {
+      method: 'PUT',
+      body: JSON.stringify({}),
+    })
+  },
+  adminListHotels(page = 0, size = 20) {
+    return request(`/admin/hotels${toQueryString({ page, size })}`)
+  },
+  adminCreateHotel(payload) {
+    return request('/admin/hotel', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  adminUpdateHotel(id, payload) {
+    return request(`/admin/hotel/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+  adminBlockHotel(id) {
+    return request(`/admin/hotel/${id}/block`, {
+      method: 'PUT',
+      body: JSON.stringify({}),
+    })
+  },
+  adminUnblockHotel(id) {
+    return request(`/admin/hotel/${id}/unblock`, {
+      method: 'PUT',
+      body: JSON.stringify({}),
+    })
+  },
   adminCreateDestination(payload) {
     return request('/admin/destination', {
       method: 'POST',
@@ -226,6 +268,15 @@ export const api = {
   },
   adminConfirmCodCollected(paymentId) {
     return request(`/admin/payments/${paymentId}/confirm-cod`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  },
+  adminListPendingHotelCodBookings() {
+    return request('/admin/hotel-bookings/cod-pending')
+  },
+  adminConfirmHotelCodCollected(hotelBookingId) {
+    return request(`/admin/hotel-bookings/${hotelBookingId}/confirm-cod`, {
       method: 'POST',
       body: JSON.stringify({}),
     })

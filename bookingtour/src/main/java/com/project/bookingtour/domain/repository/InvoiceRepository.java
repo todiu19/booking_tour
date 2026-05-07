@@ -12,8 +12,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findByInvoiceNo(String invoiceNo);
 
     Optional<Invoice> findByBooking_Id(Long bookingId);
+    Optional<Invoice> findByHotelBooking_Id(Long hotelBookingId);
 
     List<Invoice> findByBooking_IdIn(List<Long> bookingIds);
+    List<Invoice> findByHotelBooking_IdIn(List<Long> bookingIds);
 
     Optional<Invoice> findByIdAndUser_Id(Long id, Long userId);
 

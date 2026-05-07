@@ -4,17 +4,17 @@ import { api } from '../api'
 import Pagination from '../components/Pagination'
 
 function formatPrice(value) {
-  if (value == null) return 'Lien he'
+  if (value == null) return 'Liên hệ'
   return `${Number(value).toLocaleString('vi-VN')} đ`
 }
 
 function formatDateTime(value) {
-  if (!value) return 'Chua co'
+  if (!value) return 'Chưa có'
   return new Date(value).toLocaleString('vi-VN')
 }
 
 function formatDate(value) {
-  if (!value) return 'Chua co'
+  if (!value) return 'Chưa có'
   if (Array.isArray(value) && value.length >= 3) {
     const [y, m, d] = value
     const pad = (n) => String(n).padStart(2, '0')
@@ -50,6 +50,7 @@ function normalizeLocalDate(value) {
 function canReviewHotelBooking(booking) {
   if (booking.reviewed) return false
   if (String(booking.bookingStatus || '').toLowerCase() === 'cancelled') return false
+  if (String(booking.paymentStatus || '').toLowerCase() !== 'paid') return false
   const outStr = normalizeLocalDate(booking.checkOutDate)
   if (!outStr) return false
   const [yy, mm, dd] = outStr.split('-').map(Number)
@@ -58,6 +59,33 @@ function canReviewHotelBooking(booking) {
   today.setHours(0, 0, 0, 0)
   checkout.setHours(0, 0, 0, 0)
   return checkout <= today
+}
+
+function isDepartureDateReached(value) {
+  const dateStr = normalizeLocalDate(value)
+  if (!dateStr) return false
+  const [yy, mm, dd] = dateStr.split('-').map(Number)
+  const departure = new Date(yy, mm - 1, dd)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  departure.setHours(0, 0, 0, 0)
+  return departure <= today
+}
+
+/** Tour review chỉ mở khi đã thanh toán + đã tới ngày khởi hành + đơn không bị huỷ + chưa review. */
+function canReviewTourBooking(booking) {
+  if (booking?.reviewed) return false
+  if (String(booking?.bookingStatus || '').toLowerCase() === 'cancelled') return false
+  if (String(booking?.paymentStatus || '').toLowerCase() !== 'paid') return false
+  return isDepartureDateReached(booking?.departureDate)
+}
+
+function canCancelOrder(bookingStatus, paymentStatus) {
+  const bs = String(bookingStatus || '').toLowerCase()
+  const ps = String(paymentStatus || '').toLowerCase()
+  if (ps !== 'unpaid') return false
+  if (bs === 'cancelled' || bs === 'completed') return false
+  return true
 }
 
 export default function BookingsPage() {
@@ -116,6 +144,29 @@ export default function BookingsPage() {
     setHotelData(result)
   }
 
+  async function cancelTourBooking(id) {
+    try {
+      await api.cancelBooking(id)
+      setMessage('Đã huỷ đơn thành công.')
+      setError('')
+      const result = await api.getMyBookings(page, 8)
+      setData(result)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  async function cancelHotelBooking(id) {
+    try {
+      await api.cancelHotelBooking(id)
+      setMessage('Đã huỷ đơn thành công.')
+      setError('')
+      await reloadHotelBookings()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   async function submitHotelReview(booking) {
     const review = hotelReviewMap[booking.id]
     if (!review?.rating) {
@@ -143,7 +194,7 @@ export default function BookingsPage() {
   async function submitReview(booking) {
     const review = reviewMap[booking.id]
     if (!review?.rating) {
-      setError('Vui long chon diem danh gia tu 1 den 5 truoc khi gui.')
+      setError('Vui lòng chọn đánh giá 1-5 *.')
       return
     }
     try {
@@ -152,9 +203,11 @@ export default function BookingsPage() {
         rating: Number(review.rating),
         comment: review.comment || '',
       })
-      setMessage('Da gui danh gia tour thanh cong.')
+      setMessage('Đã gửi đánh giá thành công.')
       setError('')
       setReviewMap((prev) => ({ ...prev, [booking.id]: { rating: '', comment: '' } }))
+      const result = await api.getMyBookings(page, 8)
+      setData(result)
     } catch (e) {
       setError(e.message)
     }
@@ -168,7 +221,7 @@ export default function BookingsPage() {
       <div className="profile-hero panel">
         <h1>Đơn hàng của tôi</h1>
         <p className="muted">
-          Xem tat ca don dat tour va dat phong khach san cua ban, xem chi tiet va xu ly ho don (neu co).
+          Xem tất cả đơn của bạn.
         </p>
       </div>
 
@@ -201,7 +254,7 @@ export default function BookingsPage() {
 
         {activeTab === 'tour' ? (
           <div className="bookings-section bookings-tab-pane" role="tabpanel" aria-labelledby="tab-tour-bookings">
-        {loading ? <p className="muted bookings-loading">Đang tải đơn tour...</p> : null}
+        {loading ? <p className="muted bookings-loading">Đang tải...</p> : null}
 
         {!loading &&
           tours.map((b) => {
@@ -214,73 +267,123 @@ export default function BookingsPage() {
                     <h3>{b.tourName || `Tour #${b.tourId || ''}`}</h3>
                     <ul className="bookings-meta-list">
                       <li>
-                        <span>Dat luc</span>
+                        <span>Đặt lúc</span>
                         <strong>{formatDateTime(b.createdAt)}</strong>
                       </li>
                       <li>
-                        <span>Tong tien</span>
+                        <span>Tổng tiền</span>
                         <strong>{formatPrice(b.totalAmount)}</strong>
                       </li>
                       <li>
-                        <span>Thanh toan</span>
-                        <strong>{b.paymentStatus || 'Chua ro'}</strong>
+                        <span>Trạng thái đơn</span>
+                        <strong>{b.bookingStatus || 'Không xác định'}</strong>
+                      </li>
+                      <li>
+                        <span>Thanh toán</span>
+                        <strong>{b.paymentStatus || 'Không xác định'}</strong>
                       </li>
                     </ul>
                   </div>
                   <div className="actions bookings-card-actions">
                     {b.canViewInvoice && b.invoiceId ? (
-                      <Link className="button" to={`/invoices/${b.invoiceId}`}>
-                        Xem hoa don
+                      <Link className="button bookings-invoice-button" to={`/invoices/${b.invoiceId}`}>
+                        Xem hoá đơn
                       </Link>
                     ) : (
-                      <span className="muted bookings-inline-hint">Chua co hoa don</span>
+                      <span className="muted bookings-inline-hint bookings-invoice-placeholder">Chua co hoa don</span>
                     )}
                     <Link className="button button-secondary" to={`/bookings/${b.id}`}>
-                      Xem chi tiet
+                      Xem chi tiết
                     </Link>
-                  </div>
-                </div>
-                <div className="review-box bookings-review-wrap">
-                  <h4>Danh gia tour</h4>
-                  <div className="bookings-review-fields">
-                    <div className="bookings-review-field">
-                      <label htmlFor={`rating-${b.id}`}>Diem (1–5)</label>
-                      <input
-                        id={`rating-${b.id}`}
-                        type="number"
-                        min="1"
-                        max="5"
-                        placeholder="1-5"
-                        value={review.rating}
-                        onChange={(e) =>
-                          setReviewMap((prev) => ({
-                            ...prev,
-                            [b.id]: { ...review, rating: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="bookings-review-field bookings-review-field--grow">
-                      <label htmlFor={`comment-${b.id}`}>Binh luan</label>
-                      <input
-                        id={`comment-${b.id}`}
-                        placeholder="Chia se trai nghiem..."
-                        value={review.comment}
-                        onChange={(e) =>
-                          setReviewMap((prev) => ({
-                            ...prev,
-                            [b.id]: { ...review, comment: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="bookings-review-submit">
-                      <button type="button" className="button" onClick={() => submitReview(b)}>
-                        Gui danh gia
+                    {canCancelOrder(b.bookingStatus, b.paymentStatus) ? (
+                      <button className="button button-secondary" type="button" onClick={() => cancelTourBooking(b.id)}>
+                        Huỷ đơn
                       </button>
-                    </div>
+                    ) : null}
                   </div>
                 </div>
+                {(() => {
+                  if (b.reviewed) {
+                    return (
+                      <p className="muted bookings-review-done">
+                        Bạn đã đánh giá tour này. Cảm ơn bạn đã chia sẻ!
+                      </p>
+                    )
+                  }
+                  if (String(b.bookingStatus || '').toLowerCase() === 'cancelled') {
+                    return (
+                      <p className="muted bookings-review-done">Đơn đã hủy, không thể đánh giá.</p>
+                    )
+                  }
+                  if (String(b.paymentStatus || '').toLowerCase() !== 'paid') {
+                    return (
+                      <p className="muted bookings-review-done">
+                        Chỉ đánh giá được khi đơn đã thanh toán.
+                      </p>
+                    )
+                  }
+                  if (!isDepartureDateReached(b.departureDate)) {
+                    return (
+                      <p className="muted bookings-review-done">
+                        Bạn có thể đánh giá sau ngày khởi hành{b.departureDate ? ` (${formatDate(b.departureDate)})` : ''}.
+                      </p>
+                    )
+                  }
+                  if (!canReviewTourBooking(b)) {
+                    return (
+                      <p className="muted bookings-review-done">
+                        Chưa đủ điều kiện đánh giá tour này.
+                      </p>
+                    )
+                  }
+                  return (
+                    <div className="review-box bookings-review-wrap">
+                      <h4>Đánh giá tour</h4>
+                      <div className="bookings-review-fields">
+                        <div className="bookings-review-field">
+                          <label htmlFor={`rating-${b.id}`}>Điểm (1–5)</label>
+                          <input
+                            id={`rating-${b.id}`}
+                            type="number"
+                            min="1"
+                            max="5"
+                            placeholder="1-5"
+                            value={review.rating}
+                            onChange={(e) =>
+                              setReviewMap((prev) => ({
+                                ...prev,
+                                [b.id]: { ...review, rating: e.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="bookings-review-field bookings-review-field--grow">
+                          <label htmlFor={`comment-${b.id}`}>Comment</label>
+                          <input
+                            id={`comment-${b.id}`}
+                            placeholder="Chia sẻ trải nghiệm của bạn..."
+                            value={review.comment}
+                            onChange={(e) =>
+                              setReviewMap((prev) => ({
+                                ...prev,
+                                [b.id]: { ...review, comment: e.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="bookings-review-submit">
+                          <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={() => submitReview(b)}
+                          >
+                            Gửi đánh giá
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
               </article>
             )
           })}
@@ -307,43 +410,53 @@ export default function BookingsPage() {
             <article className="bookings-card panel" key={`hotel-${h.id}`}>
               <div className="booking-head bookings-card-head panel-head">
                 <div className="booking-summary stack bookings-card-main">
-                  <span className="bookings-type-pill bookings-type-pill--hotel">Khach san</span>
+                  <span className="bookings-type-pill bookings-type-pill--hotel">Khách sạn</span>
                   <h3>{h.hotelName || `Khach san #${h.hotelId || ''}`}</h3>
                   <ul className="bookings-meta-list">
                     <li>
-                      <span>Ma dat</span>
+                      <span>Mã</span>
                       <strong>{h.bookingCode || `#${h.id}`}</strong>
                     </li>
                     <li>
-                      <span>Nhan / Tra phong</span>
+                      <span>Nhận / Trả phòng</span>
                       <strong>
                         {formatDate(h.checkInDate)} – {formatDate(h.checkOutDate)}
                       </strong>
                     </li>
                     <li>
-                      <span>Phong / Khach</span>
+                      <span>Phòng / Khách</span>
                       <strong>
-                        {h.roomCount ?? '-'} phong, {h.guestCount ?? '-'} khach
+                        {h.roomCount ?? '-'} phòng, {h.guestCount ?? '-'} khách
                       </strong>
                     </li>
                     <li>
-                      <span>Tong tien</span>
+                      <span>Tổng tiền</span>
                       <strong>{formatPrice(h.totalAmount)}</strong>
                     </li>
                     <li>
-                      <span>Trang thai</span>
+                      <span>Trạng thái</span>
                       <strong>
-                        {h.bookingStatus != null ? String(h.bookingStatus) : 'Chua ro'} /{' '}
-                        {h.paymentStatus != null ? String(h.paymentStatus) : 'Chua ro'}
+                        {h.bookingStatus != null ? String(h.bookingStatus) : 'Không xác định'} /{' '}
+                        {h.paymentStatus != null ? String(h.paymentStatus) : 'Không xác định'}
                       </strong>
                     </li>
                   </ul>
                 </div>
                 <div className="actions bookings-card-actions">
-                  {h.hotelId ? (
-                    <Link className="button" to={`/hotels/${h.hotelId}`}>
-                      Xem khach san
+                  {h.canViewInvoice && h.invoiceId ? (
+                    <Link className="button bookings-invoice-button" to={`/invoices/${h.invoiceId}`}>
+                      Xem hoá đơn
                     </Link>
+                  ) : null}
+                  {h.hotelId ? (
+                    <Link className="button button-secondary" to={`/hotels/${h.hotelId}`}>
+                      Xem khách sạn
+                    </Link>
+                  ) : null}
+                  {canCancelOrder(h.bookingStatus, h.paymentStatus) ? (
+                    <button className="button button-secondary" type="button" onClick={() => cancelHotelBooking(h.id)}>
+                      Huỷ đơn
+                    </button>
                   ) : null}
                 </div>
               </div>
@@ -361,6 +474,11 @@ export default function BookingsPage() {
                     <p className="muted bookings-review-done">Đơn đã hủy, không thể đánh giá.</p>
                   )
                 }
+                if (String(h.paymentStatus || '').toLowerCase() !== 'paid') {
+                  return (
+                    <p className="muted bookings-review-done">Chỉ đánh giá khi đơn đã thanh toán.</p>
+                  )
+                }
                 if (!canReviewHotelBooking({ ...h, reviewed: false })) {
                   return (
                     <p className="muted bookings-review-done">
@@ -370,10 +488,10 @@ export default function BookingsPage() {
                 }
                 return (
                   <div className="review-box bookings-review-wrap">
-                    <h4>Danh gia khach san</h4>
+                    <h4>Đánh giá khách sạn</h4>
                     <div className="bookings-review-fields">
                       <div className="bookings-review-field">
-                        <label htmlFor={`hotel-rating-${h.id}`}>Diem (1–5)</label>
+                        <label htmlFor={`hotel-rating-${h.id}`}>Điểm (1–5)</label>
                         <input
                           id={`hotel-rating-${h.id}`}
                           type="number"
@@ -390,10 +508,10 @@ export default function BookingsPage() {
                         />
                       </div>
                       <div className="bookings-review-field bookings-review-field--grow">
-                        <label htmlFor={`hotel-comment-${h.id}`}>Binh luan</label>
+                        <label htmlFor={`hotel-comment-${h.id}`}>Comment</label>
                         <input
                           id={`hotel-comment-${h.id}`}
-                          placeholder="Khong gian, dich vu..."
+                          placeholder="Chia sẻ trải nghiệm của bạn..."
                           value={review.comment}
                           onChange={(e) =>
                             setHotelReviewMap((prev) => ({
@@ -404,8 +522,8 @@ export default function BookingsPage() {
                         />
                       </div>
                       <div className="bookings-review-submit">
-                        <button type="button" className="button" onClick={() => submitHotelReview(h)}>
-                          Gui danh gia
+                        <button type="button" className="button button-secondary" onClick={() => submitHotelReview(h)}>
+                          Gửi đánh giá
                         </button>
                       </div>
                     </div>

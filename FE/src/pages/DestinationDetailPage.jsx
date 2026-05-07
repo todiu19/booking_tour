@@ -36,28 +36,33 @@ export default function DestinationDetailPage() {
     }
   }, [id, page])
 
-  if (loading) return <p>Loading destination detail...</p>
+  if (loading) return <p>Đang tải chi tiết điểm đến...</p>
   if (error) return <p className="error">{error}</p>
-  if (!destination) return <p>Destination not found.</p>
+  if (!destination) return <p>Không tìm thấy điểm đến.</p>
 
   return (
-    <section className="stack">
-      <h1>{destination.name}</h1>
-      <p className="muted">
-        {destination.province}, {destination.country}
-      </p>
-      {destination.imageUrl ? (
-        <img src={destination.imageUrl} className="hero-image" alt={destination.name} />
-      ) : null}
+    <section className="stack destination-detail-page">
+      <div className="destination-detail-hero">
+        {destination.imageUrl ? (
+          <img src={destination.imageUrl} className="hero-image" alt={destination.name} />
+        ) : null}
+        <div className="stack destination-detail-summary">
+          <h1>{destination.name}</h1>
+          <p className="muted">
+            {destination.province}, {destination.country}
+          </p>
+          <p>{destination.description || 'Chưa có mô tả cho điểm đến này.'}</p>
+        </div>
+      </div>
 
-      <h2>Tours in this destination</h2>
+      <h2>Các tour tại điểm đến này</h2>
       <div className="grid">
         {(tourPage?.content || []).map((tour) => (
           <TourCard key={tour.id} tour={tour} />
         ))}
       </div>
 
-      {!loading && (tourPage?.content || []).length === 0 ? <p>No tours for this destination.</p> : null}
+      {!loading && (tourPage?.content || []).length === 0 ? <p>Hiện chưa có tour cho điểm đến này.</p> : null}
 
       <Pagination
         page={tourPage?.page || 0}

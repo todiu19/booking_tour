@@ -10,11 +10,15 @@ import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.domain.entity.Review;
 import com.project.bookingtour.domain.entity.Tour;
+import com.project.bookingtour.domain.entity.TourDeparture;
 import com.project.bookingtour.domain.entity.User;
 import com.project.bookingtour.domain.repository.BookingRepository;
 import com.project.bookingtour.domain.repository.ReviewRepository;
+import com.project.bookingtour.domain.repository.TourDepartureRepository;
 import com.project.bookingtour.domain.repository.TourRepository;
 import com.project.bookingtour.domain.repository.UserRepository;
+import java.time.LocalDate;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +34,7 @@ public class ReviewService {
     private final BookingRepository bookingRepository;
     private final TourRepository tourRepository;
     private final UserRepository userRepository;
+    private final TourDepartureRepository tourDepartureRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<ReviewResponse> getVisibleReviewsByTour(Long tourId, int page, int size) {
@@ -70,6 +75,22 @@ public class ReviewService {
                         userId, tour.getId(), BookingPaymentStatus.paid, BookingStatus.cancelled);
         if (!eligible) {
             throw new AppException(ErrorCode.BAD_REQUEST, "Only paid bookings can be reviewed");
+        }
+        List<TourDeparture> departures =
+                tourDepartureRepository.findByTour_IdOrderByDepartureDateAsc(tour.getId());
+        if (departures.isEmpty()) {
+            throw new AppException(
+                    ErrorCode.BAD_REQUEST, "Chỉ được đánh giá sau ngày khởi hành của tour");
+        }
+        LocalDate today = LocalDate.now();
+        boolean anyDepartureReached =
+                departures.stream()
+                        .map(TourDeparture::getDepartureDate)
+                        .filter(java.util.Objects::nonNull)
+                        .anyMatch(d -> !d.isAfter(today));
+        if (!anyDepartureReached) {
+            throw new AppException(
+                    ErrorCode.BAD_REQUEST, "Chỉ được đánh giá sau ngày khởi hành của tour");
         }
         if (reviewRepository.existsByUser_IdAndTour_Id(userId, tour.getId())) {
             throw new AppException(ErrorCode.BAD_REQUEST, "You already reviewed this tour");

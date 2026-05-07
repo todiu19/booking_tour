@@ -4,6 +4,7 @@ import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
 import com.project.bookingtour.domain.entity.Booking;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
 
@@ -29,6 +30,14 @@ public class BookingResponse {
     private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /**
+     * Ngày khởi hành dự kiến của tour ứng với booking (xấp xỉ): chọn ngày khởi hành sớm nhất
+     * mà >= ngày tạo booking, nếu không có thì lấy ngày khởi hành mới nhất của tour. Dùng để
+     * frontend chặn đánh giá khi chưa tới ngày đi.
+     */
+    private LocalDate departureDate;
+    /** True nếu user đã gửi đánh giá cho tour của booking này. */
+    private boolean reviewed;
 
     public static BookingResponse from(Booking b) {
         if (b == null) {

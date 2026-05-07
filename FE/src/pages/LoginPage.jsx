@@ -15,11 +15,13 @@ export default function LoginPage({ onLoginSuccess }) {
       setLoading(true)
       setError('')
       setSuccess('')
-      await api.login(form)
-      setSuccess(`Login Thành Công`)
+      const result = await api.login(form)
+      setSuccess('Đăng nhập thành công')
       onLoginSuccess?.()
+      const roleName = String(result?.user?.role?.name || '').toLowerCase()
+      const nextPath = roleName === 'admin' ? '/admin/dashboard' : '/'
       setTimeout(() => {
-        navigate('/')
+        navigate(nextPath)
       }, 900)
     } catch (err) {
       setError(err.message)
@@ -32,8 +34,8 @@ export default function LoginPage({ onLoginSuccess }) {
   return (
     <section className="auth-login-wrap">
       <div className="auth-login-card panel">
-        <h1>Dang nhap tai khoan</h1>
-        <p className="auth-login-subtitle">Dang nhap de dat tour, dat khach san va theo doi lich su don cua ban.</p>
+        <h1>Đăng nhập tài khoản</h1>
+        <p className="auth-login-subtitle">Đăng nhập để đặt tour, đặt khách sạn và theo dõi lịch sử đơn của bạn.</p>
 
         <form onSubmit={submit} className="auth-login-form">
           <div className="auth-login-field">
@@ -41,18 +43,18 @@ export default function LoginPage({ onLoginSuccess }) {
             <input
               id="login-email"
               type="email"
-              placeholder="Nhap email cua ban"
+              placeholder="Nhập email của bạn"
               value={form.email}
               onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
               required
             />
           </div>
           <div className="auth-login-field">
-            <label htmlFor="login-password">Mat khau</label>
+            <label htmlFor="login-password">Mật khẩu</label>
             <input
               id="login-password"
               type="password"
-              placeholder="Nhap mat khau"
+              placeholder="Nhập mật khẩu"
               value={form.password}
               onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
               required
@@ -60,12 +62,12 @@ export default function LoginPage({ onLoginSuccess }) {
           </div>
 
           <button type="submit" className="button auth-login-submit" disabled={loading}>
-            {loading ? 'Dang dang nhap...' : 'Dang nhap'}
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
 
         <p className="auth-login-register">
-          Chua co tai khoan? <Link to="/register">Dang ky ngay</Link>
+          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
         </p>
 
         {success ? <p className="success">{success}</p> : null}
