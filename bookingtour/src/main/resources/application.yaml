@@ -45,8 +45,8 @@ app:
       - http://localhost:*
       - http://127.0.0.1:*
   vnpay:
-    tmn-code: "DEMO_TMNCODE"
-    hash-secret: "DEMO_HASH_SECRET_CHANGE_ME"
+    tmn-code: "KP5JRHY2"
+    hash-secret: "KDJ1G73XDVSWCVURWG0R0DUDSW5D2E9Z"
     pay-url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
     return-url: "http://localhost:5173/payment/vnpay-return"
     ipn-url: "http://localhost:8080/payments/vnpay/ipn"

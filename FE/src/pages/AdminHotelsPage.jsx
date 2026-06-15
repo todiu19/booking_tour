@@ -22,6 +22,7 @@ export default function AdminHotelsPage() {
     roomCapacity: 1,
     hotelTypeId: '',
     imageUrlsText: '',
+    imageFiles: [],
   })
   const [form, setForm] = useState({
     name: '',
@@ -33,8 +34,15 @@ export default function AdminHotelsPage() {
     destinationId: '',
     hotelTypeId: '',
     imageUrlsText: '',
+    imageFiles: [],
     status: 'active',
   })
+
+  async function uploadImageFiles(group, files) {
+    const selected = Array.from(files || [])
+    if (!selected.length) return []
+    return api.adminUploadImages(group, selected)
+  }
 
   function parseImageUrlsText(value) {
     return String(value || '')
@@ -103,6 +111,7 @@ export default function AdminHotelsPage() {
   async function createHotel(e) {
     e.preventDefault()
     try {
+      const uploadedImageUrls = await uploadImageFiles('hotels', form.imageFiles)
       const payload = {
         name: form.name,
         address: form.address || undefined,
@@ -112,7 +121,7 @@ export default function AdminHotelsPage() {
         roomCapacity: Number(form.roomCapacity || 1),
         destinationId: form.destinationId ? Number(form.destinationId) : undefined,
         hotelTypeId: form.hotelTypeId ? Number(form.hotelTypeId) || undefined : undefined,
-        imageUrls: parseImageUrlsText(form.imageUrlsText),
+        imageUrls: [...parseImageUrlsText(form.imageUrlsText), ...uploadedImageUrls],
         status: form.status,
       }
       await api.adminCreateHotel(payload)
@@ -128,6 +137,7 @@ export default function AdminHotelsPage() {
         destinationId: '',
         hotelTypeId: '',
         imageUrlsText: '',
+        imageFiles: [],
         status: 'active',
       })
       setPage(0)
@@ -185,11 +195,13 @@ export default function AdminHotelsPage() {
       roomCapacity: hotel.roomCapacity ?? 1,
       hotelTypeId: hotel.hotelTypeId ? String(hotel.hotelTypeId) : '',
       imageUrlsText: '',
+      imageFiles: [],
     })
   }
 
   async function saveEditHotel(hotel) {
     try {
+      const uploadedImageUrls = await uploadImageFiles('hotels', editForm.imageFiles)
       const payload = {
         name: editForm.name,
         address: hotel.address || undefined,
@@ -199,7 +211,7 @@ export default function AdminHotelsPage() {
         roomCapacity: Number(editForm.roomCapacity || 1),
         destinationId: hotel.destinationId ?? undefined,
         hotelTypeId: editForm.hotelTypeId ? Number(editForm.hotelTypeId) || undefined : undefined,
-        imageUrls: parseImageUrlsText(editForm.imageUrlsText),
+        imageUrls: [...parseImageUrlsText(editForm.imageUrlsText), ...uploadedImageUrls],
         status: hotel.status || 'active',
       }
       await api.adminUpdateHotel(hotel.id, payload)
@@ -357,6 +369,20 @@ export default function AdminHotelsPage() {
                             placeholder="https://.../hotel1.jpg&#10;https://.../hotel2.jpg"
                           />
                         </label>
+                        <label onClick={(e) => e.stopPropagation()}>
+                          <strong>Upload ảnh từ máy:</strong>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={(e) =>
+                              setEditForm((prev) => ({ ...prev, imageFiles: Array.from(e.target.files || []) }))
+                            }
+                          />
+                          {editForm.imageFiles.length ? (
+                            <p className="muted">Đã chọn {editForm.imageFiles.length} ảnh</p>
+                          ) : null}
+                        </label>
                       </>
                     ) : (
                       <>
@@ -506,6 +532,16 @@ export default function AdminHotelsPage() {
                 onChange={(e) => setForm((p) => ({ ...p, imageUrlsText: e.target.value }))}
                 placeholder="https://.../hotel1.jpg&#10;https://.../hotel2.jpg"
               />
+            </label>
+            <label>
+              <strong>Upload ảnh từ máy:</strong>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => setForm((p) => ({ ...p, imageFiles: Array.from(e.target.files || []) }))}
+              />
+              {form.imageFiles.length ? <p className="muted">Đã chọn {form.imageFiles.length} ảnh</p> : null}
             </label>
             <div className="actions">
               <button className="button" type="submit">

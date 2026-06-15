@@ -45,6 +45,14 @@ public class PaymentController {
         return paymentService.handleVnpayIpn(params);
     }
 
+    @PostMapping("/vnpay/return")
+    public ApiResponse<Map<String, String>> vnpayReturn(@RequestBody Map<String, String> params) {
+        ApiResponse<Map<String, String>> res = new ApiResponse<>();
+        res.setData(paymentService.handleVnpayIpn(params));
+        res.setMessage("VNPay return processed");
+        return res;
+    }
+
     private static String extractClientIp(HttpServletRequest request) {
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {

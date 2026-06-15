@@ -3,6 +3,10 @@ import { api } from '../api'
 import Pagination from '../components/Pagination'
 import AdminShell from '../components/AdminShell'
 
+function ensureArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
 function collectDeparturePointOptions(tours) {
   const base = ['Ha Noi', 'Da Nang', 'TP HCM']
   const values = new Set(base)
@@ -59,6 +63,48 @@ function parseImageUrlsText(value) {
     .filter(Boolean)
 }
 
+function normalizeItinerariesForForm(itineraries) {
+  return ensureArray(itineraries)
+    .filter(Boolean)
+    .map((it) => ({
+      dayNumber: it?.dayNumber ?? '',
+      title: it?.title ?? '',
+      description: it?.description ?? '',
+      hotels: ensureArray(it?.hotels)
+        .filter(Boolean)
+        .map((h) => ({
+          hotelId: h?.hotelId ?? h?.hotel?.id ?? '',
+          nightCount: h?.nightCount ?? '',
+        })),
+      hotelsOpen: false,
+    }))
+    .sort((a, b) => Number(a.dayNumber || 0) - Number(b.dayNumber || 0))
+}
+
+function itinerariesToPayload(itineraries) {
+  const normalized = ensureArray(itineraries)
+    .filter(Boolean)
+    .map((it) => ({
+      dayNumber: Number(it?.dayNumber),
+      title: String(it?.title || '').trim(),
+      description: String(it?.description || ''),
+      hotels: ensureArray(it?.hotels)
+        .filter(Boolean)
+        .map((h) => ({
+          hotelId: Number(h?.hotelId),
+          nightCount:
+            h?.nightCount === '' || h?.nightCount === null || h?.nightCount === undefined
+              ? null
+              : Number(h?.nightCount),
+        }))
+        .filter((h) => Number.isFinite(h.hotelId)),
+    }))
+    .filter((it) => Number.isFinite(it.dayNumber) && it.dayNumber >= 1 && it.title)
+    .sort((a, b) => a.dayNumber - b.dayNumber)
+
+  return normalized.length ? normalized : undefined
+}
+
 export default function AdminToursPage() {
   const [data, setData] = useState(null)
   const [page, setPage] = useState(0)
@@ -72,6 +118,7 @@ export default function AdminToursPage() {
   const [editDestinationOpen, setEditDestinationOpen] = useState(false)
   const [originOptions, setOriginOptions] = useState(['Hà Nội', 'Đà Nẵng', 'TP HCM'])
   const [destinationCatalog, setDestinationCatalog] = useState([])
+  const [hotelCatalog, setHotelCatalog] = useState([])
   const [editDateDraft, setEditDateDraft] = useState('')
   const [createDateDraft, setCreateDateDraft] = useState('')
   const [editForm, setEditForm] = useState({
@@ -84,6 +131,8 @@ export default function AdminToursPage() {
     departureDatesText: '',
     destinationIds: [],
     imageUrlsText: '',
+    imageFiles: [],
+    itineraries: [],
   })
   const [form, setForm] = useState({
     code: '',
@@ -96,7 +145,15 @@ export default function AdminToursPage() {
     departurePoint: '',
     status: 'published',
     imageUrlsText: '',
+    imageFiles: [],
+    itineraries: [],
   })
+
+  async function uploadImageFiles(group, files) {
+    const selected = Array.from(files || [])
+    if (!selected.length) return []
+    return api.adminUploadImages(group, selected)
+  }
 
   async function loadTours(nextPage = page) {
     try {
@@ -175,6 +232,23 @@ export default function AdminToursPage() {
     }
   }, [])
 
+  useEffect(() => {
+    let active = true
+    async function loadHotelCatalog() {
+      try {
+        const result = await api.adminListHotels(0, 500)
+        if (!active) return
+        setHotelCatalog(result?.content || [])
+      } catch {
+        if (active) setHotelCatalog([])
+      }
+    }
+    loadHotelCatalog()
+    return () => {
+      active = false
+    }
+  }, [])
+
   async function archive(id) {
     try {
       await api.adminArchiveTour(id)
@@ -198,6 +272,7 @@ export default function AdminToursPage() {
   async function createTour(e) {
     e.preventDefault()
     try {
+      const uploadedImageUrls = await uploadImageFiles('tours', form.imageFiles)
       const payload = {
         code: form.code,
         name: form.name,
@@ -216,7 +291,8 @@ export default function AdminToursPage() {
           .map((item) => item.trim())
           .filter(Boolean),
         destinationIds: form.destinationIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)),
-        imageUrls: parseImageUrlsText(form.imageUrlsText),
+        imageUrls: [...parseImageUrlsText(form.imageUrlsText), ...uploadedImageUrls],
+        itineraries: itinerariesToPayload(form.itineraries),
       }
       await api.adminCreateTour(payload)
       setMessage('Tạo tour thành công')
@@ -232,6 +308,8 @@ export default function AdminToursPage() {
         departurePoint: '',
         status: 'published',
         imageUrlsText: '',
+        imageFiles: [],
+        itineraries: [],
       })
       setPage(0)
       setActiveTab('list')
@@ -303,6 +381,166 @@ export default function AdminToursPage() {
     destinationCatalog.length > 0
       ? destinationCatalog.map((d) => ({ id: String(d.id), label: d.name || d.province || `Điểm đến #${d.id}` }))
       : collectDestinationOptions(tours).map((name) => ({ id: name, label: name }))
+  const hotelOptions =
+    (hotelCatalog || []).map((h) => ({
+      id: String(h.id),
+      label: h.name || `Khách sạn #${h.id}`,
+      destinationId: h.destinationId ? String(h.destinationId) : '',
+    })) || []
+
+  function getHotelLabelById(hotelId) {
+    const id = String(hotelId || '')
+    const found = hotelOptions.find((h) => h.id === id)
+    return found?.label || (id ? `Khách sạn #${id}` : '')
+  }
+
+  function addCreateItineraryDay() {
+    setForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const nextDay =
+        current.length === 0
+          ? 1
+          : Math.max(...current.map((i) => Number(i?.dayNumber || 0)).filter((n) => Number.isFinite(n))) + 1
+      return {
+        ...prev,
+        itineraries: [
+          ...current,
+          { dayNumber: nextDay, title: '', description: '', hotels: [], hotelsOpen: false },
+        ],
+      }
+    })
+  }
+
+  function removeCreateItineraryDay(index) {
+    setForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      return { ...prev, itineraries: current.filter((_, i) => i !== index) }
+    })
+  }
+
+  function toggleCreateItineraryHotels(index) {
+    setForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => (i === index ? { ...it, hotelsOpen: !it.hotelsOpen } : it))
+      return { ...prev, itineraries: next }
+    })
+  }
+
+  function updateCreateItineraryField(index, field, value) {
+    setForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => (i === index ? { ...it, [field]: value } : it))
+      return { ...prev, itineraries: next }
+    })
+  }
+
+  function toggleCreateItineraryHotel(index, hotelId, checked) {
+    setForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => {
+        if (i !== index) return it
+        const hotels = ensureArray(it.hotels)
+        const id = String(hotelId)
+        if (checked) {
+          if (hotels.some((h) => String(h.hotelId) === id)) return it
+          return { ...it, hotels: [...hotels, { hotelId: id, nightCount: 1 }] }
+        }
+        return { ...it, hotels: hotels.filter((h) => String(h.hotelId) !== id) }
+      })
+      return { ...prev, itineraries: next }
+    })
+  }
+
+  function updateCreateItineraryHotelNight(index, hotelId, nightCount) {
+    setForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => {
+        if (i !== index) return it
+        const id = String(hotelId)
+        return {
+          ...it,
+          hotels: ensureArray(it.hotels).map((h) =>
+            String(h.hotelId) === id ? { ...h, nightCount } : h
+          ),
+        }
+      })
+      return { ...prev, itineraries: next }
+    })
+  }
+
+  function addEditItineraryDay() {
+    setEditForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const nextDay =
+        current.length === 0
+          ? 1
+          : Math.max(...current.map((i) => Number(i?.dayNumber || 0)).filter((n) => Number.isFinite(n))) + 1
+      return {
+        ...prev,
+        itineraries: [
+          ...current,
+          { dayNumber: nextDay, title: '', description: '', hotels: [], hotelsOpen: false },
+        ],
+      }
+    })
+  }
+
+  function removeEditItineraryDay(index) {
+    setEditForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      return { ...prev, itineraries: current.filter((_, i) => i !== index) }
+    })
+  }
+
+  function toggleEditItineraryHotels(index) {
+    setEditForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => (i === index ? { ...it, hotelsOpen: !it.hotelsOpen } : it))
+      return { ...prev, itineraries: next }
+    })
+  }
+
+  function updateEditItineraryField(index, field, value) {
+    setEditForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => (i === index ? { ...it, [field]: value } : it))
+      return { ...prev, itineraries: next }
+    })
+  }
+
+  function toggleEditItineraryHotel(index, hotelId, checked) {
+    setEditForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => {
+        if (i !== index) return it
+        const hotels = ensureArray(it.hotels)
+        const id = String(hotelId)
+        if (checked) {
+          if (hotels.some((h) => String(h.hotelId) === id)) return it
+          return { ...it, hotels: [...hotels, { hotelId: id, nightCount: 1 }] }
+        }
+        return { ...it, hotels: hotels.filter((h) => String(h.hotelId) !== id) }
+      })
+      return { ...prev, itineraries: next }
+    })
+  }
+
+  function updateEditItineraryHotelNight(index, hotelId, nightCount) {
+    setEditForm((prev) => {
+      const current = ensureArray(prev.itineraries)
+      const next = current.map((it, i) => {
+        if (i !== index) return it
+        const id = String(hotelId)
+        return {
+          ...it,
+          hotels: ensureArray(it.hotels).map((h) =>
+            String(h.hotelId) === id ? { ...h, nightCount } : h
+          ),
+        }
+      })
+      return { ...prev, itineraries: next }
+    })
+  }
 
   function startEditTour(tour) {
     setEditingTourId(tour.id)
@@ -322,11 +560,14 @@ export default function AdminToursPage() {
             .map((d) => String(d.id))
         : [],
       imageUrlsText: '',
+      imageFiles: [],
+      itineraries: normalizeItinerariesForForm(tour.itineraries),
     })
   }
 
   async function saveEditTour(tour) {
     try {
+      const uploadedImageUrls = await uploadImageFiles('tours', editForm.imageFiles)
       const payload = {
         code: editForm.code,
         name: editForm.name,
@@ -340,7 +581,8 @@ export default function AdminToursPage() {
           .map((item) => item.trim())
           .filter(Boolean),
         destinationIds: editForm.destinationIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)),
-        imageUrls: parseImageUrlsText(editForm.imageUrlsText),
+        imageUrls: [...parseImageUrlsText(editForm.imageUrlsText), ...uploadedImageUrls],
+        itineraries: itinerariesToPayload(editForm.itineraries),
       }
       await api.adminUpdateTour(tour.id, payload)
       setMessage('Cập nhật tour thành công')
@@ -557,6 +799,128 @@ export default function AdminToursPage() {
                             placeholder="https://.../tour1.jpg&#10;https://.../tour2.jpg"
                           />
                         </label>
+                        <label onClick={(e) => e.stopPropagation()}>
+                          <strong>Upload ảnh từ máy:</strong>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={(e) =>
+                              setEditForm((prev) => ({ ...prev, imageFiles: Array.from(e.target.files || []) }))
+                            }
+                          />
+                          {editForm.imageFiles.length ? (
+                            <p className="muted">Đã chọn {editForm.imageFiles.length} ảnh</p>
+                          ) : null}
+                        </label>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <strong>Lịch trình tour:</strong>
+                          <div className="stack" style={{ marginTop: 8 }}>
+                            {ensureArray(editForm.itineraries).length === 0 ? (
+                              <p className="muted">Chưa có lịch trình</p>
+                            ) : null}
+                            {ensureArray(editForm.itineraries).map((it, idx) => (
+                              <div key={`${idx}-${it.dayNumber || 'day'}`} className="panel stack">
+                                <div className="panel-head">
+                                  <h3>Ngày</h3>
+                                  <button
+                                    type="button"
+                                    className="button button-secondary"
+                                    onClick={() => removeEditItineraryDay(idx)}
+                                  >
+                                    Xóa ngày
+                                  </button>
+                                </div>
+                                <label>
+                                  <strong>Ngày số:</strong>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={it.dayNumber}
+                                    onChange={(e) => updateEditItineraryField(idx, 'dayNumber', e.target.value)}
+                                  />
+                                </label>
+                                <label>
+                                  <strong>Tiêu đề:</strong>
+                                  <input
+                                    value={it.title}
+                                    onChange={(e) => updateEditItineraryField(idx, 'title', e.target.value)}
+                                  />
+                                </label>
+                                <label>
+                                  <strong>Mô tả:</strong>
+                                  <textarea
+                                    rows={3}
+                                    value={it.description}
+                                    onChange={(e) => updateEditItineraryField(idx, 'description', e.target.value)}
+                                  />
+                                </label>
+                                <label>
+                                  <strong>Khách sạn:</strong>
+                                  <div className="destination-picker">
+                                    <button
+                                      type="button"
+                                      className="destination-picker-trigger"
+                                      onClick={() => toggleEditItineraryHotels(idx)}
+                                    >
+                                      Chọn khách sạn
+                                    </button>
+                                    {it.hotelsOpen ? (
+                                      <div className="destination-picker-menu stack">
+                                        {hotelOptions.map((hotel) => {
+                                          const checked = ensureArray(it.hotels).some(
+                                            (h) => String(h.hotelId) === String(hotel.id)
+                                          )
+                                          const selected = ensureArray(it.hotels).find(
+                                            (h) => String(h.hotelId) === String(hotel.id)
+                                          )
+                                          return (
+                                            <label key={hotel.id} className="muted">
+                                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={checked}
+                                                  onChange={(e) => toggleEditItineraryHotel(idx, hotel.id, e.target.checked)}
+                                                />
+                                                <span style={{ flex: 1 }}>{hotel.label}</span>
+                                                {checked ? (
+                                                  <input
+                                                    type="number"
+                                                    min="1"
+                                                    style={{ width: 90 }}
+                                                    value={selected?.nightCount ?? 1}
+                                                    onChange={(e) =>
+                                                      updateEditItineraryHotelNight(idx, hotel.id, e.target.value)
+                                                    }
+                                                    placeholder="Số đêm"
+                                                    title="Số đêm"
+                                                  />
+                                                ) : null}
+                                              </div>
+                                            </label>
+                                          )
+                                        })}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </label>
+                                {ensureArray(it.hotels).length ? (
+                                  <p className="muted">
+                                    Đã chọn:{' '}
+                                    {ensureArray(it.hotels)
+                                      .map((h) => `${getHotelLabelById(h.hotelId)} (${h.nightCount || 1} đêm)`)
+                                      .join(', ')}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ))}
+                            <div className="actions">
+                              <button type="button" className="button button-secondary" onClick={addEditItineraryDay}>
+                                Thêm ngày
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </>
                     ) : (
                       <>
@@ -578,6 +942,33 @@ export default function AdminToursPage() {
                         <p>
                           <strong>Danh sách điểm đến:</strong> {t.destinationList || 'Chưa có'}
                         </p>
+                        <div className="stack">
+                          <p>
+                            <strong>Lịch trình tour:</strong>
+                          </p>
+                          {ensureArray(t.itineraries).length === 0 ? <p className="muted">Chưa có</p> : null}
+                          {ensureArray(t.itineraries)
+                            .slice()
+                            .sort((a, b) => Number(a.dayNumber || 0) - Number(b.dayNumber || 0))
+                            .map((it) => (
+                              <div key={`it-${it.id || it.dayNumber}`} className="panel stack">
+                                <p>
+                                  <strong>Ngày {it.dayNumber}:</strong> {it.title}
+                                </p>
+                                <p>
+                                  <strong>Mô tả:</strong> {it.description || 'Chưa có'}
+                                </p>
+                                <p>
+                                  <strong>Khách sạn:</strong>{' '}
+                                  {ensureArray(it.hotels).length
+                                    ? ensureArray(it.hotels)
+                                        .map((h) => `${h.hotelName || getHotelLabelById(h.hotelId)} (${h.nightCount || 1} đêm)`)
+                                        .join(', ')
+                                    : 'Chưa có'}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
                       </>
                     )}
                     <div className="actions">
@@ -736,6 +1127,109 @@ export default function AdminToursPage() {
                 placeholder="https://.../tour1.jpg&#10;https://.../tour2.jpg"
               />
             </label>
+            <label>
+              <strong>Upload ảnh từ máy:</strong>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => setForm((p) => ({ ...p, imageFiles: Array.from(e.target.files || []) }))}
+              />
+              {form.imageFiles.length ? <p className="muted">Đã chọn {form.imageFiles.length} ảnh</p> : null}
+            </label>
+            <div>
+              <strong>Lịch trình tour:</strong>
+              <div className="stack" style={{ marginTop: 8 }}>
+                {ensureArray(form.itineraries).length === 0 ? <p className="muted">Chưa có lịch trình</p> : null}
+                {ensureArray(form.itineraries).map((it, idx) => (
+                  <div key={`${idx}-${it.dayNumber || 'day'}`} className="panel stack">
+                    <div className="panel-head">
+                      <h3>Ngày</h3>
+                      <button type="button" className="button button-secondary" onClick={() => removeCreateItineraryDay(idx)}>
+                        Xóa ngày
+                      </button>
+                    </div>
+                    <label>
+                      <strong>Ngày số:</strong>
+                      <input
+                        type="number"
+                        min="1"
+                        value={it.dayNumber}
+                        onChange={(e) => updateCreateItineraryField(idx, 'dayNumber', e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <strong>Tiêu đề:</strong>
+                      <input value={it.title} onChange={(e) => updateCreateItineraryField(idx, 'title', e.target.value)} />
+                    </label>
+                    <label>
+                      <strong>Mô tả:</strong>
+                      <textarea
+                        rows={3}
+                        value={it.description}
+                        onChange={(e) => updateCreateItineraryField(idx, 'description', e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <strong>Khách sạn:</strong>
+                      <div className="destination-picker">
+                        <button
+                          type="button"
+                          className="destination-picker-trigger"
+                          onClick={() => toggleCreateItineraryHotels(idx)}
+                        >
+                          Chọn khách sạn
+                        </button>
+                        {it.hotelsOpen ? (
+                          <div className="destination-picker-menu stack">
+                            {hotelOptions.map((hotel) => {
+                              const checked = ensureArray(it.hotels).some((h) => String(h.hotelId) === String(hotel.id))
+                              const selected = ensureArray(it.hotels).find((h) => String(h.hotelId) === String(hotel.id))
+                              return (
+                                <label key={hotel.id} className="muted">
+                                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={(e) => toggleCreateItineraryHotel(idx, hotel.id, e.target.checked)}
+                                    />
+                                    <span style={{ flex: 1 }}>{hotel.label}</span>
+                                    {checked ? (
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        style={{ width: 90 }}
+                                        value={selected?.nightCount ?? 1}
+                                        onChange={(e) => updateCreateItineraryHotelNight(idx, hotel.id, e.target.value)}
+                                        placeholder="Số đêm"
+                                        title="Số đêm"
+                                      />
+                                    ) : null}
+                                  </div>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    </label>
+                    {ensureArray(it.hotels).length ? (
+                      <p className="muted">
+                        Đã chọn:{' '}
+                        {ensureArray(it.hotels)
+                          .map((h) => `${getHotelLabelById(h.hotelId)} (${h.nightCount || 1} đêm)`)
+                          .join(', ')}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+                <div className="actions">
+                  <button type="button" className="button button-secondary" onClick={addCreateItineraryDay}>
+                    Thêm ngày
+                  </button>
+                </div>
+              </div>
+            </div>
             <div className="actions">
               <button className="button" type="submit">
                 Tạo mới tour

@@ -12,6 +12,24 @@ function formatDateTime(value) {
   return new Date(value).toLocaleString('vi-VN')
 }
 
+function formatBookingStatus(status) {
+  const value = String(status || '').toLowerCase()
+  if (value === 'pending') return 'Đang chờ xác nhận'
+  if (value === 'confirmed') return 'Đã xác nhận'
+  if (value === 'cancelled') return 'Đã huỷ'
+  if (value === 'completed') return 'Đã hoàn thành'
+  return status || 'Không xác định'
+}
+
+function formatPaymentStatus(status) {
+  const value = String(status || '').toLowerCase()
+  if (value === 'paid') return 'Đã thanh toán'
+  if (value === 'unpaid') return 'Chưa thanh toán'
+  if (value === 'failed') return 'Thanh toán thất bại'
+  if (value === 'refunded') return 'Đã hoàn tiền'
+  return status || 'Không xác định'
+}
+
 export default function BookingDetailPage() {
   const { id } = useParams()
   const [booking, setBooking] = useState(null)
@@ -97,10 +115,10 @@ export default function BookingDetailPage() {
             <strong>Tổng tiền:</strong> {formatPrice(booking.totalAmount)}
           </p>
           <p>
-            <strong>Thanh toán:</strong> {booking.paymentStatus}
+            <strong>Thanh toán:</strong> {formatPaymentStatus(booking.paymentStatus)}
           </p>
           <p>
-            <strong>Trạng thái đơn:</strong> {booking.bookingStatus}
+            <strong>Trạng thái đơn:</strong> {formatBookingStatus(booking.bookingStatus)}
           </p>
           <p>
             <strong>Số khách:</strong> {booking.adultCount} người lớn, {booking.childCount} trẻ em

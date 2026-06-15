@@ -16,8 +16,15 @@ export default function AdminDestinationsPage() {
     province: '',
     country: '',
     imageUrl: '',
+    imageFiles: [],
     description: '',
   })
+
+  async function uploadDestinationImages(files) {
+    const selected = Array.from(files || [])
+    if (!selected.length) return []
+    return api.adminUploadImages('destinations', selected)
+  }
 
   async function load(nextPage = page) {
     try {
@@ -40,11 +47,17 @@ export default function AdminDestinationsPage() {
   async function submit(e) {
     e.preventDefault()
     try {
+      const uploadedImageUrls = await uploadDestinationImages(form.imageFiles)
+      const payload = {
+        ...form,
+        imageUrl: uploadedImageUrls[0] || form.imageUrl,
+      }
+      delete payload.imageFiles
       if (editId) {
-        await api.adminUpdateDestination(editId, form)
+        await api.adminUpdateDestination(editId, payload)
         setMessage('Cập nhật điểm đến thành công')
       } else {
-        await api.adminCreateDestination(form)
+        await api.adminCreateDestination(payload)
         setMessage('Tạo điểm đến thành công')
       }
       load()
@@ -60,6 +73,7 @@ export default function AdminDestinationsPage() {
       province: d.province || '',
       country: d.country || '',
       imageUrl: d.imageUrl || '',
+      imageFiles: [],
       description: d.description || '',
     })
   }
@@ -88,7 +102,7 @@ export default function AdminDestinationsPage() {
           onClick={() => {
             setActiveTab('create')
             setEditId('')
-            setForm({ name: '', province: '', country: '', imageUrl: '', description: '' })
+            setForm({ name: '', province: '', country: '', imageUrl: '', imageFiles: [], description: '' })
           }}
         >
           Tạo địa điểm
@@ -135,6 +149,18 @@ export default function AdminDestinationsPage() {
                     value={form.imageUrl}
                     onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
                   />
+                  <label>
+                    <strong>Upload ảnh từ máy:</strong>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      onChange={(e) => setForm((p) => ({ ...p, imageFiles: Array.from(e.target.files || []) }))}
+                    />
+                    {form.imageFiles.length ? (
+                      <p className="muted">Đã chọn {form.imageFiles.length} ảnh, hệ thống dùng ảnh đầu tiên làm đại diện</p>
+                    ) : null}
+                  </label>
                   <textarea
                     placeholder="Mô tả"
                     rows={3}
@@ -150,7 +176,7 @@ export default function AdminDestinationsPage() {
                       type="button"
                       onClick={() => {
                         setEditId('')
-                        setForm({ name: '', province: '', country: '', imageUrl: '', description: '' })
+                        setForm({ name: '', province: '', country: '', imageUrl: '', imageFiles: [], description: '' })
                       }}
                     >
                       Hủy
@@ -212,6 +238,18 @@ export default function AdminDestinationsPage() {
               value={form.imageUrl}
               onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
             />
+            <label>
+              <strong>Upload ảnh từ máy:</strong>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => setForm((p) => ({ ...p, imageFiles: Array.from(e.target.files || []) }))}
+              />
+              {form.imageFiles.length ? (
+                <p className="muted">Đã chọn {form.imageFiles.length} ảnh, hệ thống dùng ảnh đầu tiên làm đại diện</p>
+              ) : null}
+            </label>
             <textarea
               placeholder="Mô tả"
               rows={3}

@@ -33,6 +33,7 @@ public class HotelBookingResponse {
     private LocalDateTime updatedAt;
     private Long invoiceId;
     private boolean canViewInvoice;
+    private String paymentUrl;
     /** true if user already submitted an order-linked review for this booking */
     private boolean reviewed;
 

@@ -14,6 +14,7 @@ import RegisterPage from './pages/RegisterPage'
 import BookingsPage from './pages/BookingsPage'
 import BookingDetailPage from './pages/BookingDetailPage'
 import InvoiceDetailPage from './pages/InvoiceDetailPage'
+import VnpayReturnPage from './pages/VnpayReturnPage'
 import AdminRoute from './components/AdminRoute'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminUsersPage from './pages/AdminUsersPage'
@@ -81,6 +82,7 @@ function App() {
           <Route path="/bookings" element={<BookingsPage />} />
           <Route path="/bookings/:id" element={<BookingDetailPage />} />
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          <Route path="/payment/vnpay-return" element={<VnpayReturnPage />} />
           <Route
             path="/admin/dashboard"
             element={

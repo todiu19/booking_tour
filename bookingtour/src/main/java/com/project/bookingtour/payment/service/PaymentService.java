@@ -1,5 +1,7 @@
 package com.project.bookingtour.payment.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.bookingtour.config.VnpayProperties;
 import com.project.bookingtour.common.dto.request.PaymentCreateRequest;
 import com.project.bookingtour.common.dto.response.AdminPaymentItemResponse;
@@ -13,9 +15,11 @@ import com.project.bookingtour.common.enums.PaymentStatus;
 import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.domain.entity.Booking;
+import com.project.bookingtour.domain.entity.HotelBooking;
 import com.project.bookingtour.domain.entity.Invoice;
 import com.project.bookingtour.domain.entity.Payment;
 import com.project.bookingtour.domain.repository.BookingRepository;
+import com.project.bookingtour.domain.repository.HotelBookingRepository;
 import com.project.bookingtour.domain.repository.InvoiceRepository;
 import com.project.bookingtour.domain.repository.PaymentRepository;
 import java.math.BigDecimal;
@@ -28,6 +32,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.math.RoundingMode;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import javax.crypto.Mac;
@@ -49,8 +54,10 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
+    private final HotelBookingRepository hotelBookingRepository;
     private final InvoiceRepository invoiceRepository;
     private final VnpayProperties vnpayProperties;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public PaymentCheckoutResponse payBooking(Long userId, PaymentCreateRequest req, String ipAddress) {
@@ -119,6 +126,39 @@ public class PaymentService {
     }
 
     @Transactional
+    public PaymentCheckoutResponse payHotelBooking(Long userId, Long hotelBookingId, String ipAddress) {
+        HotelBooking booking =
+                hotelBookingRepository
+                        .findByIdAndUser_Id(hotelBookingId, userId)
+                        .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (booking.getBookingStatus() == BookingStatus.cancelled) {
+            throw new AppException(ErrorCode.BOOKING_CANNOT_CANCEL, "Cancelled hotel booking cannot be paid");
+        }
+        if (booking.getPaymentStatus() == BookingPaymentStatus.paid) {
+            throw new AppException(ErrorCode.BOOKING_ALREADY_PAID);
+        }
+        if (booking.getPaymentMethod() != PaymentProvider.vnpay) {
+            throw new AppException(ErrorCode.PAYMENT_PROVIDER_INVALID, "Hotel booking payment method is not VNPay");
+        }
+
+        Payment payment = new Payment();
+        payment.setBooking(null);
+        payment.setHotelBooking(booking);
+        payment.setProvider(PaymentProvider.vnpay);
+        payment.setTransactionRef(generateTransactionRef(PaymentProvider.vnpay.name() + "-H"));
+        payment.setAmount(booking.getTotalAmount() == null ? BigDecimal.ZERO : booking.getTotalAmount());
+        payment.setPaymentStatus(PaymentStatus.pending);
+        payment.setRawResponse("{}");
+        Payment savedPayment = paymentRepository.save(payment);
+
+        PaymentCheckoutResponse res = new PaymentCheckoutResponse();
+        res.setPayment(PaymentResponse.from(savedPayment));
+        res.setPaymentUrl(buildVnpayPaymentUrl(savedPayment, booking.getBookingCode(), ipAddress));
+        return res;
+    }
+
+    @Transactional
     public Map<String, String> handleVnpayIpn(Map<String, String> allParams) {
         String secureHash = allParams.get("vnp_SecureHash");
         if (secureHash == null || secureHash.isBlank()) {
@@ -160,14 +200,14 @@ public class PaymentService {
             return ipnResult("02", "Order already confirmed");
         }
 
-        payment.setRawResponse(allParams.toString());
+        payment.setRawResponse(toJson(allParams));
         String rspCode = allParams.getOrDefault("vnp_ResponseCode", "");
         String txnStatus = allParams.getOrDefault("vnp_TransactionStatus", "");
         if ("00".equals(rspCode) && "00".equals(txnStatus)) {
             payment.setPaymentStatus(PaymentStatus.success);
             payment.setPaidAt(LocalDateTime.now(VN_ZONE));
             paymentRepository.save(payment);
-            markBookingPaidAndCreateInvoice(payment);
+            markPaidAndCreateInvoice(payment);
             return ipnResult("00", "Confirm Success");
         }
 
@@ -233,14 +273,14 @@ public class PaymentService {
         payment.setRawResponse("{}");
         Payment savedPayment = paymentRepository.save(payment);
 
-        String paymentUrl = buildVnpayPaymentUrl(savedPayment, booking, ipAddress);
+        String paymentUrl = buildVnpayPaymentUrl(savedPayment, booking.getBookingCode(), ipAddress);
         PaymentCheckoutResponse res = new PaymentCheckoutResponse();
         res.setPayment(PaymentResponse.from(savedPayment));
         res.setPaymentUrl(paymentUrl);
         return res;
     }
 
-    private String buildVnpayPaymentUrl(Payment payment, Booking booking, String ipAddress) {
+    private String buildVnpayPaymentUrl(Payment payment, String orderCode, String ipAddress) {
         LocalDateTime now = LocalDateTime.now(VN_ZONE);
         LocalDateTime expire = now.plusMinutes(Math.max(vnpayProperties.expireMinutes(), 1));
         String safeIp = (ipAddress == null || ipAddress.isBlank()) ? "127.0.0.1" : ipAddress;
@@ -253,7 +293,7 @@ public class PaymentService {
         params.put("vnp_Amount", String.valueOf(amount));
         params.put("vnp_CurrCode", vnpayProperties.currCode());
         params.put("vnp_TxnRef", payment.getTransactionRef());
-        params.put("vnp_OrderInfo", "Thanh toan booking " + booking.getBookingCode());
+        params.put("vnp_OrderInfo", "Thanh toan booking " + orderCode);
         params.put("vnp_OrderType", VNPAY_ORDER_TYPE);
         params.put("vnp_Locale", vnpayProperties.locale());
         params.put("vnp_ReturnUrl", vnpayProperties.returnUrl());
@@ -267,6 +307,16 @@ public class PaymentService {
         return vnpayProperties.payUrl() + "?" + query;
     }
 
+    private Invoice markPaidAndCreateInvoice(Payment payment) {
+        if (payment.getBooking() != null) {
+            return markBookingPaidAndCreateInvoice(payment);
+        }
+        if (payment.getHotelBooking() != null) {
+            return markHotelBookingPaidAndCreateInvoice(payment);
+        }
+        throw new AppException(ErrorCode.BAD_REQUEST, "Payment does not belong to any booking");
+    }
+
     private Invoice markBookingPaidAndCreateInvoice(Payment payment) {
         Booking booking = payment.getBooking();
         booking.setPaymentStatus(BookingPaymentStatus.paid);
@@ -275,6 +325,16 @@ public class PaymentService {
         }
         bookingRepository.save(booking);
         return createInvoiceIfAbsent(booking, payment);
+    }
+
+    private Invoice markHotelBookingPaidAndCreateInvoice(Payment payment) {
+        HotelBooking booking = payment.getHotelBooking();
+        booking.setPaymentStatus(BookingPaymentStatus.paid);
+        if (booking.getBookingStatus() == BookingStatus.pending) {
+            booking.setBookingStatus(BookingStatus.confirmed);
+        }
+        hotelBookingRepository.save(booking);
+        return createHotelInvoiceIfAbsent(booking, payment);
     }
 
     private Invoice createInvoiceIfAbsent(Booking booking, Payment payment) {
@@ -302,6 +362,33 @@ public class PaymentService {
         return invoiceRepository.save(inv);
     }
 
+    private Invoice createHotelInvoiceIfAbsent(HotelBooking booking, Payment payment) {
+        var existing = invoiceRepository.findByHotelBooking_Id(booking.getId());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        BigDecimal subtotal = booking.getTotalAmount() == null ? BigDecimal.ZERO : booking.getTotalAmount();
+        BigDecimal tax = subtotal.multiply(DEFAULT_TAX_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(tax);
+
+        Invoice inv = new Invoice();
+        inv.setInvoiceNo(generateHotelInvoiceNo());
+        inv.setBooking(null);
+        inv.setHotelBooking(booking);
+        inv.setUser(booking.getUser());
+        inv.setPayment(payment);
+        inv.setIssuedAt(LocalDateTime.now());
+        inv.setSubtotalAmount(subtotal);
+        inv.setTaxAmount(tax);
+        inv.setTotalAmount(total);
+        inv.setBillingName(booking.getContactName());
+        inv.setBillingPhone(booking.getContactPhone());
+        inv.setBillingEmail(booking.getContactEmail());
+        inv.setBillingAddress(null);
+        inv.setNote("Auto-generated after hotel booking payment success");
+        return invoiceRepository.save(inv);
+    }
+
     private String generateInvoiceNo() {
         String prefix = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());
         for (int i = 0; i < 20; i++) {
@@ -311,6 +398,17 @@ public class PaymentService {
             }
         }
         throw new AppException(ErrorCode.INTERNAL_ERROR, "Unable to generate invoice number");
+    }
+
+    private String generateHotelInvoiceNo() {
+        String prefix = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());
+        for (int i = 0; i < 20; i++) {
+            String candidate = "INVH" + prefix + ThreadLocalRandom.current().nextInt(100, 1000);
+            if (invoiceRepository.findByInvoiceNo(candidate).isEmpty()) {
+                return candidate;
+            }
+        }
+        throw new AppException(ErrorCode.INTERNAL_ERROR, "Unable to generate hotel invoice number");
     }
 
     private String generateTransactionRef(String providerPrefix) {
@@ -375,5 +473,13 @@ public class PaymentService {
         map.put("RspCode", code);
         map.put("Message", msg);
         return map;
+    }
+
+    private String toJson(Map<String, String> values) {
+        try {
+            return objectMapper.writeValueAsString(values == null ? Map.of() : values);
+        } catch (JsonProcessingException e) {
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Unable to serialize VNPay response", e);
+        }
     }
 }

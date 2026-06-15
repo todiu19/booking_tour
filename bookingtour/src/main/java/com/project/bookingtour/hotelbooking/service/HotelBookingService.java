@@ -3,6 +3,7 @@ package com.project.bookingtour.hotelbooking.service;
 import com.project.bookingtour.common.dto.request.HotelBookingCreateRequest;
 import com.project.bookingtour.common.dto.response.HotelBookingResponse;
 import com.project.bookingtour.common.dto.response.PageResponse;
+import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
 import com.project.bookingtour.common.enums.BookingPaymentStatus;
 import com.project.bookingtour.common.enums.BookingStatus;
 import com.project.bookingtour.common.enums.HotelStatus;
@@ -21,6 +22,7 @@ import com.project.bookingtour.domain.repository.HotelReviewRepository;
 import com.project.bookingtour.domain.repository.InvoiceRepository;
 import com.project.bookingtour.domain.repository.PaymentRepository;
 import com.project.bookingtour.domain.repository.UserRepository;
+import com.project.bookingtour.payment.service.PaymentService;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Map;
@@ -45,6 +47,7 @@ public class HotelBookingService {
     private final HotelReviewRepository hotelReviewRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
 
     @Transactional(readOnly = true)
     public PageResponse<HotelBookingResponse> listMyBookings(Long userId, int page, int size) {
@@ -92,7 +95,7 @@ public class HotelBookingService {
     }
 
     @Transactional
-    public HotelBookingResponse createBooking(Long userId, HotelBookingCreateRequest req) {
+    public HotelBookingResponse createBooking(Long userId, HotelBookingCreateRequest req, String ipAddress) {
         if (req.getHotelId() == null) {
             throw new AppException(ErrorCode.BAD_REQUEST, "hotelId is required");
         }
@@ -157,22 +160,19 @@ public class HotelBookingService {
         booking.setGuestCount(guestCount);
         booking.setTotalAmount(total);
         booking.setPaymentMethod(paymentMethod);
-        if (paymentMethod == PaymentProvider.vnpay) {
-            booking.setBookingStatus(BookingStatus.confirmed);
-            booking.setPaymentStatus(BookingPaymentStatus.paid);
-        } else {
-            booking.setBookingStatus(BookingStatus.pending);
-            booking.setPaymentStatus(BookingPaymentStatus.unpaid);
-        }
+        booking.setBookingStatus(BookingStatus.pending);
+        booking.setPaymentStatus(BookingPaymentStatus.unpaid);
         booking.setNote(req.getNote());
 
         HotelBooking saved = hotelBookingRepository.save(booking);
-        Payment payment = createHotelPaymentIfAbsent(saved);
-        Invoice invoice = null;
-        if (saved.getPaymentStatus() == BookingPaymentStatus.paid) {
-            invoice = createHotelInvoiceIfAbsent(saved, payment);
+        if (paymentMethod == PaymentProvider.vnpay) {
+            PaymentCheckoutResponse checkout = paymentService.payHotelBooking(userId, saved.getId(), ipAddress);
+            HotelBookingResponse response = HotelBookingResponse.from(saved, false, null, false);
+            response.setPaymentUrl(checkout.getPaymentUrl());
+            return response;
         }
-        return HotelBookingResponse.from(saved, false, invoice != null ? invoice.getId() : null, invoice != null);
+        createHotelPaymentIfAbsent(saved);
+        return HotelBookingResponse.from(saved, false, null, false);
     }
 
     @Transactional

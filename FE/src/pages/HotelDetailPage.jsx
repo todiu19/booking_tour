@@ -190,6 +190,10 @@ export default function HotelDetailPage() {
         note: bookingForm.note || '',
       }
       const result = await api.createHotelBooking(payload)
+      if (result?.paymentUrl) {
+        window.location.href = result.paymentUrl
+        return
+      }
       const code = result?.bookingCode || `HB-${result?.id || ''}`
       const payNote =
         bookingForm.paymentMethod === 'vnpay'

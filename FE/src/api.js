@@ -1,5 +1,22 @@
 const API_BASE_URL = 'http://localhost:8080'
 
+function resolveAssetUrl(value) {
+  if (typeof value !== 'string') return value
+  return value.startsWith('/images/') ? `${API_BASE_URL}${value}` : value
+}
+
+function normalizeApiData(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeApiData)
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, normalizeApiData(item)])
+    )
+  }
+  return resolveAssetUrl(value)
+}
+
 function toQueryString(params) {
   const q = new URLSearchParams()
   Object.entries(params || {}).forEach(([k, v]) => {
@@ -12,12 +29,15 @@ function toQueryString(params) {
 }
 
 async function request(path, options = {}) {
+  const isFormData = options.body instanceof FormData
   const res = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
+    headers: isFormData
+      ? { ...(options.headers || {}) }
+      : {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
     ...options,
   })
 
@@ -43,7 +63,7 @@ async function request(path, options = {}) {
     throw error
   }
 
-  return body?.data
+  return normalizeApiData(body?.data)
 }
 
 export const api = {
@@ -152,6 +172,12 @@ export const api = {
       body: JSON.stringify(payload),
     })
   },
+  confirmVnpayReturn(payload) {
+    return request('/payments/vnpay/return', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
   createReview(payload) {
     return request('/reviews', {
       method: 'POST',
@@ -225,6 +251,16 @@ export const api = {
     return request(`/admin/tour/${id}/publish`, {
       method: 'PUT',
       body: JSON.stringify({}),
+    })
+  },
+  adminUploadImages(group, files) {
+    const formData = new FormData()
+    Array.from(files || []).forEach((file) => {
+      formData.append('files', file)
+    })
+    return request(`/admin/uploads/${group}`, {
+      method: 'POST',
+      body: formData,
     })
   },
   adminListHotels(page = 0, size = 20) {

@@ -276,11 +276,11 @@ export default function BookingsPage() {
                       </li>
                       <li>
                         <span>Trạng thái đơn</span>
-                        <strong>{b.bookingStatus || 'Không xác định'}</strong>
+                        <strong>{b.bookingStatus === 'pending' ? 'Đang chờ xác nhận' : null} {b.bookingStatus === 'confirmed' ? 'Đã xác nhận' : null} {b.bookingStatus === 'cancelled' ? 'Đã huỷ' : null} {b.bookingStatus === 'completed' ? 'Đã hoàn thành' : null}</strong>
                       </li>
                       <li>
                         <span>Thanh toán</span>
-                        <strong>{b.paymentStatus || 'Không xác định'}</strong>
+                        <strong>{b.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}</strong>
                       </li>
                     </ul>
                   </div>

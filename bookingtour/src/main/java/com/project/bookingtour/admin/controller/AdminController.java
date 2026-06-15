@@ -19,6 +19,9 @@ import com.project.bookingtour.common.dto.response.PaymentResponse;
 import com.project.bookingtour.common.dto.response.TourResponse;
 import com.project.bookingtour.common.dto.response.UserResponse;
 import com.project.bookingtour.admin.service.AdminService;
+import com.project.bookingtour.common.exception.AppException;
+import com.project.bookingtour.common.exception.ErrorCode;
+import com.project.bookingtour.storage.StorageService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/admin")
@@ -37,6 +41,7 @@ import org.springframework.http.MediaType;
 public class AdminController {
 
     private final AdminService adminService;
+    private final StorageService storageService;
 
     @GetMapping("/users")
     public ApiResponse<PageResponse<UserResponse>> listUsers(
@@ -81,6 +86,18 @@ public class AdminController {
         adminService.unblockUser(id);
         ApiResponse<Void> res = new ApiResponse<>();
         res.setMessage("User unblocked");
+        return res;
+    }
+
+    @PostMapping(value = "/uploads/{group}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<List<String>> uploadImages(
+            @PathVariable String group, @RequestParam("files") List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "At least one image file is required");
+        }
+        ApiResponse<List<String>> res = new ApiResponse<>();
+        res.setData(files.stream().map(file -> storageService.storeImage(group, file)).toList());
+        res.setMessage("Images uploaded");
         return res;
     }
 

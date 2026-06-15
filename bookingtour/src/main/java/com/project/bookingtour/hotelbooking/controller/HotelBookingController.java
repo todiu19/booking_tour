@@ -8,6 +8,7 @@ import com.project.bookingtour.common.exception.AppException;
 import com.project.bookingtour.common.exception.ErrorCode;
 import com.project.bookingtour.hotelbooking.service.HotelBookingService;
 import com.project.bookingtour.security.AppUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,12 +54,13 @@ public class HotelBookingController {
     @PostMapping
     public ApiResponse<HotelBookingResponse> create(
             @AuthenticationPrincipal AppUserDetails principal,
-            @RequestBody HotelBookingCreateRequest request) {
+            @RequestBody HotelBookingCreateRequest request,
+            HttpServletRequest httpRequest) {
         if (principal == null) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
         ApiResponse<HotelBookingResponse> res = new ApiResponse<>();
-        res.setData(hotelBookingService.createBooking(principal.getId(), request));
+        res.setData(hotelBookingService.createBooking(principal.getId(), request, extractClientIp(httpRequest)));
         res.setMessage("Hotel booking created");
         return res;
     }
@@ -73,5 +75,14 @@ public class HotelBookingController {
         res.setData(hotelBookingService.cancelMyBooking(principal.getId(), id));
         res.setMessage("Hotel booking cancelled");
         return res;
+    }
+
+    private static String extractClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        String ip = request.getRemoteAddr();
+        return ip == null || ip.isBlank() ? "127.0.0.1" : ip;
     }
 }
