@@ -1,0 +1,14 @@
+# Sao chép file này thành application-local.yaml rồi điền giá trị thật.
+# File application-local.yaml KHÔNG được commit lên Git.
+
+spring:
+  datasource:
+    username: root
+    password: <mat-khau-mysql-cua-ban>
+
+app:
+  jwt:
+    secret: "<chuoi-bi-mat-it-nhat-32-ky-tu>"
+  vnpay:
+    tmn-code: "<vnpay-tmn-code>"
+    hash-secret: "<vnpay-hash-secret>"

@@ -1,10 +1,12 @@
 spring:
   application:
     name: bookingtour
+  config:
+    import: optional:classpath:application-local.yaml
   datasource:
     url: jdbc:mysql://localhost:3306/booking_tour?useUnicode=true&characterEncoding=UTF-8
     username: root
-    password: Tonguyen24@
+    password:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     defer-datasource-initialization: true
@@ -27,7 +29,7 @@ spring:
 
 app:
   jwt:
-    secret: "ChangeThisToARandomSecretKey32bytes!!"
+    secret:
     expiration-ms: 86400000
   auth-cookie:
     name: access_token
@@ -45,8 +47,8 @@ app:
       - http://localhost:*
       - http://127.0.0.1:*
   vnpay:
-    tmn-code: "KP5JRHY2"
-    hash-secret: "KDJ1G73XDVSWCVURWG0R0DUDSW5D2E9Z"
+    tmn-code:
+    hash-secret:
     pay-url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
     return-url: "http://localhost:5173/payment/vnpay-return"
     ipn-url: "http://localhost:8080/payments/vnpay/ipn"

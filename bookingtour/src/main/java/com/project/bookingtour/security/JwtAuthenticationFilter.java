@@ -1,5 +1,5 @@
 package com.project.bookingtour.security;
-
+// filter để đọc JWT từ cookie, xác thực token và thiết lập thông tin người dùng vào SecurityContext
 import com.project.bookingtour.config.AuthCookieProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

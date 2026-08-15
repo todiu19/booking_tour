@@ -239,31 +239,31 @@ public class HotelBookingService {
         return paymentRepository.save(payment);
     }
 
-    private Invoice createHotelInvoiceIfAbsent(HotelBooking booking, Payment payment) {
-        var existing = invoiceRepository.findByHotelBooking_Id(booking.getId());
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-        BigDecimal subtotal = booking.getTotalAmount() == null ? BigDecimal.ZERO : booking.getTotalAmount();
-        BigDecimal tax = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(tax);
-        Invoice inv = new Invoice();
-        inv.setInvoiceNo(generateInvoiceNo());
-        inv.setBooking(null);
-        inv.setHotelBooking(booking);
-        inv.setUser(booking.getUser());
-        inv.setPayment(payment);
-        inv.setIssuedAt(LocalDateTime.now());
-        inv.setSubtotalAmount(subtotal);
-        inv.setTaxAmount(tax);
-        inv.setTotalAmount(total);
-        inv.setBillingName(booking.getContactName());
-        inv.setBillingPhone(booking.getContactPhone());
-        inv.setBillingEmail(booking.getContactEmail());
-        inv.setBillingAddress(null);
-        inv.setNote("Auto-generated after hotel booking payment success");
-        return invoiceRepository.save(inv);
-    }
+    // private Invoice createHotelInvoiceIfAbsent(HotelBooking booking, Payment payment) {
+    //     var existing = invoiceRepository.findByHotelBooking_Id(booking.getId());
+    //     if (existing.isPresent()) {
+    //         return existing.get();
+    //     }
+    //     BigDecimal subtotal = booking.getTotalAmount() == null ? BigDecimal.ZERO : booking.getTotalAmount();
+    //     BigDecimal tax = subtotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
+    //     BigDecimal total = subtotal.add(tax);
+    //     Invoice inv = new Invoice();
+    //     inv.setInvoiceNo(generateInvoiceNo());
+    //     inv.setBooking(null);
+    //     inv.setHotelBooking(booking);
+    //     inv.setUser(booking.getUser());
+    //     inv.setPayment(payment);
+    //     inv.setIssuedAt(LocalDateTime.now());
+    //     inv.setSubtotalAmount(subtotal);
+    //     inv.setTaxAmount(tax);
+    //     inv.setTotalAmount(total);
+    //     inv.setBillingName(booking.getContactName());
+    //     inv.setBillingPhone(booking.getContactPhone());
+    //     inv.setBillingEmail(booking.getContactEmail());
+    //     inv.setBillingAddress(null);
+    //     inv.setNote("Auto-generated after hotel booking payment success");
+    //     return invoiceRepository.save(inv);
+    // }
 
     private String generatePaymentRef(PaymentProvider provider) {
         String prefix = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now());

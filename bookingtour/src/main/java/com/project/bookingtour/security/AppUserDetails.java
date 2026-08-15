@@ -1,5 +1,5 @@
 package com.project.bookingtour.security;
-
+// lớp này là một wrapper cho entity User, implement UserDetails để Spring Security có thể sử dụng thông tin người dùng khi xác thực và phân quyền
 import com.project.bookingtour.common.enums.UserStatus;
 import com.project.bookingtour.domain.entity.User;
 import java.util.Collection;

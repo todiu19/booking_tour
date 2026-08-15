@@ -1,5 +1,5 @@
 package com.project.bookingtour.security;
-
+// service để load thông tin người dùng từ database khi xác thực JWT
 import com.project.bookingtour.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;

@@ -1,5 +1,5 @@
 package com.project.bookingtour.payment.controller;
-
+// controller để xử lý các yêu cầu liên quan đến thanh toán
 import com.project.bookingtour.common.dto.ApiResponse;
 import com.project.bookingtour.common.dto.request.PaymentCreateRequest;
 import com.project.bookingtour.common.dto.response.PaymentCheckoutResponse;
@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    // endpoint để tạo yêu cầu thanh toán, được gọi khi khách hàng muốn thanh toán lại cho một booking(hiện tại chưa dùng) 
+    // hiện tại luồng là: ấn đặt -> tạo booking - > booking goi tạo payment ....
 
     @PostMapping
     public ApiResponse<PaymentCheckoutResponse> pay(
@@ -40,11 +42,13 @@ public class PaymentController {
         return res;
     }
 
+    // endpoint để nhận IPN từ Vnpay, được Vnpay gọi khi có sự kiện thanh toán xảy ra
     @GetMapping("/vnpay/ipn")
     public Map<String, String> vnpayIpn(@RequestParam Map<String, String> params) {
         return paymentService.handleVnpayIpn(params);
     }
 
+    // endpoint để xử lý return từ Vnpay, được gọi khi khách hàng hoàn thành thanh toán và Vnpay redirect về
     @PostMapping("/vnpay/return")
     public ApiResponse<Map<String, String>> vnpayReturn(@RequestBody Map<String, String> params) {
         ApiResponse<Map<String, String>> res = new ApiResponse<>();
@@ -53,6 +57,7 @@ public class PaymentController {
         return res;
     }
 
+    // phương thức tiện ích để trích xuất địa chỉ IP của khách hàng từ request, ưu tiên header X-Forwarded-For nếu có, nếu không thì lấy từ remote address
     private static String extractClientIp(HttpServletRequest request) {
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {

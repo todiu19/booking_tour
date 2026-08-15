@@ -1,5 +1,5 @@
 package com.project.bookingtour.security;
-
+// helper để tạo cookie chứa JWT và xóa cookie khi đăng xuất
 import com.project.bookingtour.config.AuthCookieProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;

@@ -1,5 +1,5 @@
 package com.project.bookingtour.security;
-
+// xử lý khi người dùng chưa xác thực mà cố truy cập vào tài nguyên bảo vệ, trả về lỗi 401 với JSON body
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.bookingtour.common.dto.ApiResponse;
 import com.project.bookingtour.common.exception.ErrorCode;

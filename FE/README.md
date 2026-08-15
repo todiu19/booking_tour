@@ -1,16 +1,54 @@
-# React + Vite
+# Frontend — Booking Tour
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Giao diện web React cho hệ thống đặt tour & khách sạn.
 
-Currently, two official plugins are available:
+> Tài liệu đầy đủ về dự án: xem [README.md](../README.md) ở thư mục gốc.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Công nghệ
 
-## React Compiler
+- React 19 + Vite 8
+- React Router 7
+- Recharts (biểu đồ dashboard admin)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Chạy ứng dụng
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Mở **http://localhost:5173**. Backend phải chạy tại `http://localhost:8080`.
+
+## Cấu trúc chính
+
+```
+src/
+├── api.js              # REST client (cookie-based auth)
+├── App.jsx             # Routing
+├── pages/              # Trang người dùng & admin
+└── components/         # TourCard, AdminShell, Pagination, ...
+```
+
+## Trang quản trị
+
+| Route | Mô tả |
+|-------|-------|
+| `/admin/dashboard` | Thống kê doanh thu |
+| `/admin/tours` | Quản lý tour & lịch trình |
+| `/admin/hotels` | Quản lý khách sạn |
+| `/admin/destinations` | Quản lý địa điểm |
+| `/admin/users` | Quản lý người dùng |
+| `/admin/cod-confirm` | Xác nhận thu COD |
+
+## Scripts
+
+```bash
+npm run dev      # Chạy dev server
+npm run build    # Build production
+npm run preview  # Xem bản build
+npm run lint     # ESLint
+```
+
+## Cấu hình API
+
+Sửa `API_BASE_URL` trong `src/api.js` nếu backend không chạy ở `http://localhost:8080`.

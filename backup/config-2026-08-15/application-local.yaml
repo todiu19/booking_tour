@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    username: root
+    password: Tonguyen24@
+
+app:
+  jwt:
+    secret: "ChangeThisToARandomSecretKey32bytes!!"
+  vnpay:
+    tmn-code: "KP5JRHY2"
+    hash-secret: "KDJ1G73XDVSWCVURWG0R0DUDSW5D2E9Z"

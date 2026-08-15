@@ -1,5 +1,5 @@
 package com.project.bookingtour.security;
-
+// cấu hình cho bảo mật
 import com.project.bookingtour.config.AuthCookieProperties;
 import com.project.bookingtour.config.CorsProperties;
 import com.project.bookingtour.config.JwtProperties;

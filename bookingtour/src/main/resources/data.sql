@@ -131,6 +131,8 @@
 -- SELECT 'Pù Luông Retreat', 'Bản Đôn', 'Pù Luông, Thanh Hóa', 'Khu nghỉ sinh thái nhìn ra ruộng bậc thang, phù hợp trekking nhẹ.', 1700000, 2, 'active', d.id, ht.id
 -- FROM destinations d JOIN hotel_types ht ON ht.code = 'homestay'
 -- WHERE d.name = 'Pù Luông' AND NOT EXISTS (SELECT 1 FROM hotels h WHERE h.name = 'Pù Luông Retreat');
+-- 
+
 -- INSERT INTO hotels
 -- (
 --     name,

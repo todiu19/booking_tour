@@ -1,5 +1,5 @@
 package com.project.bookingtour.security;
-
+// xử lý JWT: tạo token, xác thực token, trích xuất thông tin từ token
 import com.project.bookingtour.config.JwtProperties;
 import com.project.bookingtour.domain.entity.User;
 import io.jsonwebtoken.Claims;
@@ -29,6 +29,7 @@ public class JwtService {
                 .compact();
     }
 
+    // kiểm tra tính hợp lệ của token: có thể parse được và chưa hết hạn
     public boolean isValid(String token) {
         try {
             parseClaims(token);
@@ -38,11 +39,13 @@ public class JwtService {
         }
     }
 
+    // trích xuất userId từ token (lấy sub claim và chuyển sang long)
     public long extractUserId(String token) {
         String sub = parseClaims(token).getSubject();
         return Long.parseLong(sub);
     }
 
+    // parse token để lấy claims, nếu token không hợp lệ sẽ ném exception và được isValid() bắt để trả về false
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey())
@@ -51,6 +54,7 @@ public class JwtService {
                 .getPayload();
     }
 
+    // tạo SecretKey từ chuỗi bí mật trong cấu hình, đảm bảo độ dài tối thiểu 32 bytes để đảm bảo an toàn khi sử dụng HMAC SHA-256
     private SecretKey signingKey() {
         byte[] bytes = jwtProperties.secret().getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
